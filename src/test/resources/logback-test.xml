@@ -12,7 +12,7 @@
     </appender>
 
     <logger name="botkop" level="DEBUG" />
-    <logger name="jtorch" level="DEBUG" />
+    <logger name="torch" level="DEBUG" />
 
     <root level="DEBUG">
         <appender-ref ref="ASYNCSTDOUT" />

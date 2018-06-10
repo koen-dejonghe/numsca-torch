@@ -1,4 +1,4 @@
-package jtorch.cpu
+package botkop.numsca
 
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -16,8 +16,6 @@ class NDArraySpec extends FlatSpec with Matchers {
     a.dim shouldBe 2
     a.shape shouldBe List(2, 3)
     a.size shouldBe 6
-    a.size(0) shouldBe 2
-    a.size(1) shouldBe 3
     a.data shouldBe Array(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
   }
 
@@ -29,20 +27,20 @@ class NDArraySpec extends FlatSpec with Matchers {
   }
 
   it should "free when no longer used" in {
-    val t3 = NDArray.zeros(List(100, 100)) // this one will only get garbage collected at the end of the program
-    for (i <- 1 to 100) {
+    val t3 = NDArray.ones(List(100, 100)) // this one will only get garbage collected at the end of the program
+    for (_ <- 1 to 100) {
       NDArray.zeros(List(3000, 3000)) // these will get GC'ed as soon as as System.gc() is called
       Thread.sleep(1)
     }
     t3.desc shouldBe "torch.xTensor of size 100x100"
-    t3.data.sum shouldBe 0.0
+    t3.data.sum shouldBe 100 * 100
   }
 
   it should "free in parallel when no longer used" in {
     import scala.concurrent.ExecutionContext.Implicits.global
     import scala.concurrent.duration._
 
-    val t3 = NDArray.zeros(100, 100) // this one will only get garbage collected at the end of the program
+    val t3 = NDArray.ones(100, 100) // this one will only get garbage collected at the end of the program
 
     val futures = Future.sequence {
       (1 to 100).map { _ =>
@@ -55,7 +53,7 @@ class NDArraySpec extends FlatSpec with Matchers {
 
     Await.result(futures, 10 seconds)
     t3.desc shouldBe "torch.xTensor of size 100x100"
-    t3.data.sum shouldBe 0.0
+    t3.data.sum shouldBe 100 * 100
   }
 
   it should "arange" in {
@@ -82,15 +80,16 @@ class NDArraySpec extends FlatSpec with Matchers {
     val data = t.data
     val mean = data.sum / data.length
     println(mean)
-    mean should be (0.0f +- 1e-1f)
-    val std = Math.sqrt(data.map(d => Math.pow(d - mean, 2.0)).sum / (data.length - 1))
+    mean should be(0.0f +- 1e-1f)
+    val std =
+      Math.sqrt(data.map(d => Math.pow(d - mean, 2.0)).sum / (data.length - 1))
     println(std)
-    std should be (1.0 +- 1e-1)
+    std should be(1.0 +- 1e-1)
   }
 
   it should "randint" in {
     NDArray.setSeed(213L)
-    val t = NDArray.randint(high = 10.0, shape=List(10))
+    val t = NDArray.randint(high = 10.0, shape = List(10))
     val data = t.data
     println(data.toList)
   }
@@ -105,10 +104,73 @@ class NDArraySpec extends FlatSpec with Matchers {
 
   //--------------------
   it should "cmul" in {
-    val t1 = NDArray.ones(2, 3)
-    val t2 = NDArray.ones(1, 3)
+    val t1 = NDArray.arange(1, 10)
+    val t2 = NDArray.arange(2, 11)
     val t3 = NDArray.cmul(t2, t1)
     println(t3.shape)
+    println(t3.data.toList)
+  }
+
+  it should "reshape" in {
+    val a = NDArray.arange(max = 9)
+    println(a.shape)
+    val b = a.reshape(List(3, 3))
+    println(b.shape)
+
+  }
+
+  it should "select" in {
+    val a = NDArray.arange(max = 9).reshape(3, 3)
+    val b = NDArray.select(a, dimension = 0, sliceIndex = 1)
+    println(b.shape)
+    println(b.data.toList)
+
+  }
+
+  it should "select 2" in {
+    val a = NDArray.arange(max = 8).reshape(2, 2, 2)
+    // val r = NDArray.select(a, List(0, 1, 0))
+    val r = a(0, 1, 0)
+
+    println(r.shape)
+    println(r.data.toList)
+  }
+
+  it should "assign to a selection" in {
+    val a = NDArray.arange(max = 8).reshape(2, 2, 2)
+    val r = NDArray.randn(1)
+    a(0, 1, 0) := r
+    println(a.data.toList)
+
+    val r2 = NDArray.fill(3.14f, List(2, 2))
+    a(1) := r2
+    println(a.data.toList)
+
+    // broadcasting
+    val r3 = NDArray(100)
+    a(0) := r3
+    println(a.data.toList)
+  }
+
+  it should "narrow" in {
+    val a = NDArray.arange(max = 8).reshape(2, 2, 2)
+    val b = NDArray.narrow(a, dimension = 0, firstIndex = 1, size = 1)
+    NDArray.setValue(b, 3.17f, List(0, 0, 0))
+    println(b.shape)
+    println(b.data.toList)
+    println(a.data.toList)
+  }
+
+  it should "linear" in {
+    val x = NDArray.randint(1, 5, List(2, 3))
+    val y = NDArray.randint(1, 5, List(3, 4))
+    val b = NDArray.randint(1, 5, List(2, 4))
+
+    val r = NDArray.linear(x, y, b)
+    println(r.shape)
+    println(r.data.toList)
+
+    println(r(0, 1))
   }
 
 }

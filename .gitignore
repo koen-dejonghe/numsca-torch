@@ -11,3 +11,4 @@ project/target
 *~
 .ipynb_checkpoints
 venv
+*.log
