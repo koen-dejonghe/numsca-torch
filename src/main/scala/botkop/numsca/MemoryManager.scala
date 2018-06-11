@@ -10,7 +10,14 @@ object MemoryManager extends LazyLogging {
   val FloatSize = 4
   private val hiMemMark = new AtomicLong(0)
 
-  def dec(size: Long): Long = hiMemMark.addAndGet(-size * FloatSize)
+  def dec(size: Long): Long = {
+    val m = hiMemMark.get()
+    val s = size * FloatSize
+    val t: Long = Math.max(m - s, 0L)
+    hiMemMark.lazySet(t)
+    t
+  }
+
   def inc(size: Long): Long = hiMemMark.addAndGet(size * FloatSize)
 
   def memCheck(size: Long): Unit = {

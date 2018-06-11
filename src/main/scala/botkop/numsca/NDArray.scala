@@ -5,7 +5,7 @@ import java.math.BigInteger
 import com.typesafe.scalalogging.LazyLogging
 import torch.cpu._
 
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 class NDArray private (val payload: THFloatTensor) extends LazyLogging {
 
@@ -20,6 +20,8 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
 
   def desc: String = TH.THFloatTensor_desc(payload).getStr
   def numel: Int = TH.THFloatTensor_numel(payload)
+
+  override def toString: String = desc + "\n" + data.toList
 
   def data: Array[Float] = {
     val p = TH.THFloatTensor_data(payload)
@@ -37,14 +39,23 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
     // TH.THFloatTensor_free(payload)
   }
 
+  def copy(): NDArray = NDArray.copy(this)
+
   def reshape(newShape: List[Int]): NDArray =
     NDArray.reshape(this, newShape)
 
   def reshape(newShape: Int*): NDArray = reshape(newShape.toList)
 
+  def squeeze(): NDArray = NDArray.squeeze(this)
+
   def apply(i: Int*): NDArray = NDArray.select(this, i.toList)
+  def apply(rs: NumscaRange*)(implicit z: Int = 0): NDArray = NDArray.select(this, NumscaRanges(rs))
 
   def :=(a: NDArray): Unit = NDArray.assign(this, a)
+  def :=(f: Float): Unit = NDArray.assign(this, NDArray(f))
+  def *(f: Float): NDArray = NDArray.mul(this, f)
+  def +=(f: Float): Unit = NDArray.addi(this, f)
+  def -(a: NDArray): NDArray = NDArray.min(this, a)
 }
 
 object NDArray extends LazyLogging {
@@ -55,6 +66,11 @@ object NDArray extends LazyLogging {
 //  def currentSeed: Long = TH.THRandom_seed(rng).longValue()
   def setSeed(theSeed: Long): Unit =
     TH.THRandom_manualSeed(rng, BigInteger.valueOf(theSeed))
+
+  def copy(a: NDArray): NDArray = {
+    val t = TH.THFloatTensor_newClone(a.payload)
+    new NDArray(t)
+  }
 
   def create(data: Array[Float], shape: List[Int]): NDArray = {
     require(data.length == shape.product)
@@ -141,7 +157,6 @@ object NDArray extends LazyLogging {
     new NDArray(t)
   }
 
-  // operations that create a new tensor -----------------------------
   def cmul(t1: NDArray, t2: NDArray): NDArray = {
     val r = TH.THFloatTensor_new
     TH.THFloatTensor_cmul(r, t1.payload, t2.payload)
@@ -178,6 +193,8 @@ object NDArray extends LazyLogging {
     TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
     new NDArray(t)
   }
+
+  def reshape(a: NDArray, newShape: Int*): NDArray = reshape(a, newShape.toList)
 
   def setValue(a: NDArray, value: Float, index: List[Int]): Unit = {
     a.dim match {
@@ -227,7 +244,27 @@ object NDArray extends LazyLogging {
 
     val s = TH.THFloatTensor_new()
     TH.THFloatTensor_squeeze(s, r)
+    new NDArray(s)
+  }
 
+  def select(a: NDArray, ranges: NumscaRanges): NDArray = {
+    val r = ranges.rs.zipWithIndex.foldLeft(a.payload) {
+      case (t, (i, d)) =>
+        val to = i.to match {
+          case None =>
+            TH.THFloatTensor_size(t, d).toInt
+          case Some(n) if n < 0 =>
+            TH.THFloatTensor_size(t, d).toInt + n
+          case o =>
+            o.get
+        }
+
+        val size = to - i.from
+        TH.THFloatTensor_newNarrow(t, d, i.from, size)
+    }
+
+    val s = TH.THFloatTensor_new()
+    TH.THFloatTensor_squeeze(s, r)
     new NDArray(s)
   }
 
@@ -239,6 +276,12 @@ object NDArray extends LazyLogging {
         TH.THFloatTensor_newExpand(src.payload, longStorage(a.shape))
       }
     TH.THFloatTensor_copy(a.payload, t)
+  }
+
+  def squeeze(a: NDArray): NDArray = {
+    val s = TH.THFloatTensor_new()
+    TH.THFloatTensor_squeeze(s, a.payload)
+    new NDArray(s)
   }
 
   def narrow(a: NDArray,
@@ -253,6 +296,22 @@ object NDArray extends LazyLogging {
     val t = TH.THFloatTensor_new()
     TH.THFloatTensor_addmm(t, 1.0f, b.payload, 1.0f, x.payload, y.payload)
     new NDArray(t)
+  }
+
+  def mul(t: NDArray, f: Float): NDArray = {
+    val r = TH.THFloatTensor_new()
+    TH.THFloatTensor_mul(r, t.payload, f)
+    new NDArray(r)
+  }
+
+  def addi(t: NDArray, f: Float): Unit = {
+    TH.THFloatTensor_add(t.payload, t.payload, f)
+  }
+
+  def min(a: NDArray, b: NDArray): NDArray = {
+    val r = TH.THFloatTensor_new()
+    TH.THFloatTensor_csub(r, a.payload, 1f, b.payload)
+    new NDArray(r)
   }
 
 }

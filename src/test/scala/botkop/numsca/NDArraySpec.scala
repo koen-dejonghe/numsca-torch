@@ -173,4 +173,71 @@ class NDArraySpec extends FlatSpec with Matchers {
     println(r(0, 1))
   }
 
+  //============================
+  // numsca tests
+
+  val ta: NDArray = NDArray.arange(max = 10)
+  val tb: NDArray = NDArray.reshape(NDArray.arange(max = 9), 3, 3)
+  val tc: NDArray = NDArray.reshape(NDArray.arange(max = 2 * 3 * 4), 2, 3, 4)
+
+  // Elements
+  it should "retrieve the correct elements" in {
+    assert(ta(1).squeeze().data.head == 1)
+    assert(tb(1, 0).squeeze().data.head == 3)
+    assert(tc(1, 0, 2).squeeze().data.head == 14)
+
+    val i = List(1, 0, 1)
+    assert(tc(i: _*).squeeze().data.head == 13)
+  }
+
+  it should "change array values in place" in {
+    val t = ta.copy()
+    t(3) := -5f
+    assert(t.data sameElements Array(0, 1, 2, -5, 4, 5, 6, 7, 8, 9))
+    t(0) += 7
+    println(t.data.toList)
+    assert(t.data sameElements Array(7, 1, 2, -5, 4, 5, 6, 7, 8, 9))
+
+    val t2 = tb.copy()
+    t2(2, 1) := -7
+    t2(1, 2) := -3
+    /*
+    assert(
+      arrayEqual(t2,
+        Tensor(0.00, 1.00, 2.00, 3.00, 4.00, -3.00, 6.00, -7.00,
+          8.00).reshape(3, 3)))
+     */
+    assert(t2.shape == List(3, 3))
+    assert(
+      t2.data.toList == List(0.0, 1.0, 2.0, 3.0, 4.0, -3.0, 6.0, -7.0, 8.0))
+  }
+
+  it should "do operations array-wise" in {
+    val a2 = ta * 2
+    assert(a2.data sameElements Array(0, 2, 4, 6, 8, 10, 12, 14, 16, 18))
+  }
+
+  it should "slice over a single dimension" in {
+
+    // turn into a column vector
+    val a0 = NDArray.arange(max = 10).reshape(10, 1)
+
+    // A[1:]
+    val a1 = a0(1 :>)
+
+    // A[:-1]
+    val a2 = a0(0 :> -1)
+
+    // A[1:] - A[:-1]
+    val a3 = a1 - a2
+    println(a3)
+//
+//    println(a3.shape)
+//    println(a3.data.toList)
+//
+//    println(a0(5 :>))
+//    println(a0(0 :> 5))
+
+  }
+
 }
