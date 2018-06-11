@@ -219,8 +219,7 @@ class NDArraySpec extends FlatSpec with Matchers {
 
   it should "slice over a single dimension" in {
 
-    // turn into a column vector
-    val a0 = NDArray.arange(max = 10).reshape(10, 1)
+    val a0 = NDArray.arange(max = 10)
 
     // A[1:]
     val a1 = a0(1 :>)
