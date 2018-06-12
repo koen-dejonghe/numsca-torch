@@ -4,12 +4,13 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
+import botkop.numsca.{NDArray => nd}
 
 class NDArraySpec extends FlatSpec with Matchers {
 
   "An ND array" should "create with provided data" in {
 
-    val data = (1 to 6).toArray.map(_.toFloat)
+    val data = (1 until 7).toArray.map(_.toFloat)
     val shape = List(2, 3)
     val a = NDArray.create(data, shape)
 
@@ -28,7 +29,7 @@ class NDArraySpec extends FlatSpec with Matchers {
 
   it should "free when no longer used" in {
     val t3 = NDArray.ones(List(100, 100)) // this one will only get garbage collected at the end of the program
-    for (_ <- 1 to 100) {
+    for (_ <- 0 until 100) {
       NDArray.zeros(List(3000, 3000)) // these will get GC'ed as soon as as System.gc() is called
       Thread.sleep(1)
     }
@@ -43,7 +44,7 @@ class NDArraySpec extends FlatSpec with Matchers {
     val t3 = NDArray.ones(100, 100) // this one will only get garbage collected at the end of the program
 
     val futures = Future.sequence {
-      (1 to 100).map { _ =>
+      (0 until 100).map { _ =>
         Future {
           NDArray.zeros(3000, 3000) // these will get GC'ed as soon as as System.gc() is called
           Thread.sleep(10)
@@ -229,14 +230,89 @@ class NDArraySpec extends FlatSpec with Matchers {
 
     // A[1:] - A[:-1]
     val a3 = a1 - a2
+    println(a1)
+    println(a2)
     println(a3)
-//
-//    println(a3.shape)
-//    println(a3.data.toList)
-//
-//    println(a0(5 :>))
-//    println(a0(0 :> 5))
+
+    assert(NDArray.equal(a3, NDArray.fill(1.0f, List(9))))
+
+    assert(a0(5 :>) isSameAs NDArray(5, 6, 7, 8, 9))
+    assert(a0(0 :> 5) isSameAs NDArray(0, 1, 2, 3, 4))
+
+    val s = 3 :> -1
+    ta(s) isSameAs nd(3, 4, 5, 6, 7, 8) shouldBe true
 
   }
 
+  it should "update over a single dimension" in {
+
+    val t = nd.arange(max = 10)
+    t(2 :> 5) := -nd.ones(3)
+    assert(t isSameAs nd(0, 1, -1, -1, -1, 5, 6, 7, 8, 9))
+
+    /* does not work: crashes instead
+    an[Throwable] should be thrownBy {
+      t(2 :> 5) := -nd.ones(4)
+    }
+     */
+
+    t(2 :> 5) := 33
+    t isSameAs nd(0, 1, 33, 33, 33, 5, 6, 7, 8, 9) shouldBe true
+
+    t(2 :> 5) -= 1
+    t isSameAs nd(0, 1, 32, 32, 32, 5, 6, 7, 8, 9) shouldBe true
+
+    t := -1
+    t isSameAs nd.fill(-1, List(10)) shouldBe true
+  }
+
+  it should "slice over multiple dimensions" in {
+    val tb = nd.arange(max = 9).reshape(3, 3)
+    val b1 = tb(0 :> 2, :>)
+    b1 isSameAs nd.arange(max = 6).reshape(2, 3) shouldBe true
+  }
+
+  it should "slice over multiple dimensions with integer indexing" in {
+    val b2 = tb(1, 0 :> -1)
+    b2 isSameAs nd(3, 4) shouldBe true
+  }
+
+  it should "broadcast with another tensor" in {
+
+    def verify(shape1: List[Int],
+               shape2: List[Int],
+               expectedShape: List[Int]): Unit = {
+
+      val a1 = nd.zeros(shape1)
+      val a2 = nd.zeros(shape2)
+      val a3 = nd.expand(a2, a1)
+      a3.shape shouldBe expectedShape
+    }
+
+    verify(List(256, 256, 3), List(3), List(256, 256, 3))
+    verify(List(5, 4), List(1), List(5, 4))
+    verify(List(15, 3, 5), List(15, 1, 5), List(15, 3, 5))
+    verify(List(15, 3, 5), List(3, 5), List(15, 3, 5))
+    verify(List(15, 3, 5), List(3, 1), List(15, 3, 5))
+
+  }
+
+  it should "broadcast in both directions" in {
+
+    def verify(shape1: List[Int],
+               shape2: List[Int],
+               expectedShape: List[Int]): Unit = {
+
+      val a1 = nd.zeros(shape1)
+      val a2 = nd.zeros(shape2)
+      val Seq(a3, a4) = nd.expand(Seq(a2, a1))
+      println(a3.shape)
+      println(a4.shape)
+      a3.shape shouldBe expectedShape
+      a4.shape shouldBe expectedShape
+    }
+
+    // bidirectional
+    verify(List(8, 1, 6, 1), List(7, 1, 5), List(8, 7, 6, 5))
+  }
 }

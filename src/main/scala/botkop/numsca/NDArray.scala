@@ -49,18 +49,27 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
   def squeeze(): NDArray = NDArray.squeeze(this)
 
   def apply(i: Int*): NDArray = NDArray.select(this, i.toList)
-  def apply(rs: NumscaRange*)(implicit z: Int = 0): NDArray = NDArray.select(this, NumscaRanges(rs))
+  def apply(rs: NumscaRange*)(implicit z: Int = 0): NDArray =
+    NDArray.select(this, NumscaRanges(rs))
+  def isSameAs(a: NDArray): Boolean = NDArray.equal(this, a)
 
   def :=(a: NDArray): Unit = NDArray.assign(this, a)
   def :=(f: Float): Unit = NDArray.assign(this, NDArray(f))
   def *(f: Float): NDArray = NDArray.mul(this, f)
   def +=(f: Float): Unit = NDArray.addi(this, f)
-  def -(a: NDArray): NDArray = NDArray.min(this, a)
+  def -=(f: Float): Unit = NDArray.subi(this, f)
+  def -(a: NDArray): NDArray = NDArray.sub(this, a)
+  def unary_- : NDArray = NDArray.neg(this)
+
 }
 
 object NDArray extends LazyLogging {
 
+  type Shape = List[Int]
+
   val rng: SWIGTYPE_p_THGenerator = TH.THGenerator_new()
+
+  def apply(data: Float*): NDArray = create(data: _*)
 
 //  def initialSeed: Long = TH.THRandom_initialSeed(rng).longValue()
 //  def currentSeed: Long = TH.THRandom_seed(rng).longValue()
@@ -86,8 +95,6 @@ object NDArray extends LazyLogging {
   def create(data: Array[Float]): NDArray = create(data, List(data.length))
 
   def create(data: Float*): NDArray = create(data.toArray)
-
-  def apply(data: Float*): NDArray = create(data: _*)
 
   def zeros(shape: List[Int]): NDArray = {
     MemoryManager.memCheck(shape)
@@ -250,7 +257,7 @@ object NDArray extends LazyLogging {
   def select(a: NDArray, ranges: NumscaRanges): NDArray = {
     val r = ranges.rs.zipWithIndex.foldLeft(a.payload) {
       case (t, (i, d)) =>
-        val to = i.to match {
+        val to = i.t match {
           case None =>
             TH.THFloatTensor_size(t, d).toInt
           case Some(n) if n < 0 =>
@@ -259,8 +266,8 @@ object NDArray extends LazyLogging {
             o.get
         }
 
-        val size = to - i.from
-        TH.THFloatTensor_newNarrow(t, d, i.from, size)
+        val size = to - i.f
+        TH.THFloatTensor_newNarrow(t, d, i.f, size)
     }
 
     val s = TH.THFloatTensor_new()
@@ -270,9 +277,11 @@ object NDArray extends LazyLogging {
 
   def assign(a: NDArray, src: NDArray): Unit = {
     val t =
-      if (a.dim == src.dim)
+      if (a.size == src.size) {
+        logger.debug("not broadcasting")
         src.payload
-      else { // broadcast
+      } else { // broadcast
+        logger.debug("broadcasting")
         TH.THFloatTensor_newExpand(src.payload, longStorage(a.shape))
       }
     TH.THFloatTensor_copy(a.payload, t)
@@ -308,10 +317,52 @@ object NDArray extends LazyLogging {
     TH.THFloatTensor_add(t.payload, t.payload, f)
   }
 
-  def min(a: NDArray, b: NDArray): NDArray = {
+  def subi(t: NDArray, f: Float): Unit = {
+    TH.THFloatTensor_sub(t.payload, t.payload, f)
+  }
+
+  def sub(a: NDArray, b: NDArray): NDArray = {
     val r = TH.THFloatTensor_new()
     TH.THFloatTensor_csub(r, a.payload, 1f, b.payload)
     new NDArray(r)
+  }
+
+  def equal(a: NDArray, b: NDArray): Boolean =
+    TH.THFloatTensor_equal(a.payload, b.payload) == 1
+
+  def neg(a: NDArray): NDArray = {
+    val r = TH.THFloatTensor_new()
+    TH.THFloatTensor_neg(r, a.payload)
+    new NDArray(r)
+  }
+
+  def expand(target: NDArray, source: NDArray): NDArray = {
+    val u = TH.THFloatTensor_newExpand(
+      target.payload,
+      TH.THLongStorage_newWithData(source.payload.getSize, source.dim))
+    new NDArray(u)
+  }
+
+  def expand(as: Seq[NDArray]): Seq[NDArray] = {
+    val shape = commonShape(as.map(_.shape))
+    logger.debug(s"common shape = $shape")
+    as.map { a =>
+      val t = TH.THFloatTensor_newExpand(a.payload, longStorage(shape))
+      new NDArray(t)
+    }
+  }
+
+  def commonShape(sa: Seq[Shape]): Shape = {
+    val maxRank = sa.map(_.length).max
+    val xa = sa.map { a =>
+      val diff = maxRank - a.length
+      val extShape = List.fill(diff)(1)
+      extShape ++ a
+    }
+    xa.foldLeft(List.fill(maxRank)(0)) {
+      case (shp, acc) =>
+        shp.zip(acc).map { case (a, b) => math.max(a, b) }
+    }
   }
 
 }

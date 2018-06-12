@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 
 package object numsca {
 
-  case class NumscaRange(from: Int, to: Option[Int])
+  case class NumscaRange(f: Int, t: Option[Int])
 
   def :>(end: Int) = NumscaRange(0, Some(end))
   def :> = NumscaRange(0, None)
