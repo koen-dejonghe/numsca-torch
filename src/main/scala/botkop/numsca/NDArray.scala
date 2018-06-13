@@ -9,6 +9,8 @@ import scala.language.{implicitConversions, postfixOps}
 
 class NDArray private (val payload: THFloatTensor) extends LazyLogging {
 
+  logger.info(s"refcount: ${payload.getRefcount}")
+
   val dim: Int = payload.getNDimension
 
   val shape: List[Int] = {
@@ -59,6 +61,7 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
   def +=(f: Float): Unit = NDArray.addi(this, f)
   def -=(f: Float): Unit = NDArray.subi(this, f)
   def -(a: NDArray): NDArray = NDArray.sub(this, a)
+  def +(a: NDArray): NDArray = NDArray.add(this, a)
   def unary_- : NDArray = NDArray.neg(this)
 
 }
@@ -164,13 +167,6 @@ object NDArray extends LazyLogging {
     new NDArray(t)
   }
 
-  def cmul(t1: NDArray, t2: NDArray): NDArray = {
-    val r = TH.THFloatTensor_new
-    TH.THFloatTensor_cmul(r, t1.payload, t2.payload)
-    MemoryManager.memCheck(TH.THFloatTensor_numel(r))
-    new NDArray(r)
-  }
-
   // utility functions -----------------------------
 
   private def longStorage(shape: Seq[Int]): THLongStorage = {
@@ -196,8 +192,9 @@ object NDArray extends LazyLogging {
   }
 
   def reshape(a: NDArray, newShape: List[Int]): NDArray = {
-    val t = TH.THFloatTensor_new()
-    TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
+    val t = TH.THFloatTensor_newWithStorage(a.payload.getStorage, a.payload.getStorageOffset, longStorage(newShape), null)
+    // this creates a new storage tensor
+    // TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
     new NDArray(t)
   }
 
@@ -321,34 +318,73 @@ object NDArray extends LazyLogging {
     TH.THFloatTensor_sub(t.payload, t.payload, f)
   }
 
-  def sub(a: NDArray, b: NDArray): NDArray = {
-    val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_csub(r, a.payload, 1f, b.payload)
-    new NDArray(r)
-  }
-
   def equal(a: NDArray, b: NDArray): Boolean =
     TH.THFloatTensor_equal(a.payload, b.payload) == 1
 
-  def neg(a: NDArray): NDArray = {
+  /*
+  one ops
+   */
+  def oneOp(f: (THFloatTensor, THFloatTensor) => Unit, a: NDArray): NDArray = {
     val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_neg(r, a.payload)
+    f(r, a.payload)
+    MemoryManager.memCheck(TH.THFloatTensor_numel(r))
     new NDArray(r)
   }
 
-  def expand(target: NDArray, source: NDArray): NDArray = {
-    val u = TH.THFloatTensor_newExpand(
-      target.payload,
-      TH.THLongStorage_newWithData(source.payload.getSize, source.dim))
-    new NDArray(u)
+  def neg(a: NDArray): NDArray = oneOp(TH.THFloatTensor_neg, a)
+  def sqrt(a: NDArray): NDArray = oneOp(TH.THFloatTensor_sqrt, a)
+  def square(a: NDArray): NDArray =
+    oneOp((r, t) => TH.THFloatTensor_pow(r, t, 2), a)
+
+  /*
+  bin ops
+   */
+  def binOp(f: (THFloatTensor, THFloatTensor, THFloatTensor) => Unit,
+            a: NDArray,
+            b: NDArray,
+            equiShape: Boolean = true): NDArray = {
+    val r = TH.THFloatTensor_new()
+    val Seq(ta, tb) = if (equiShape) {
+      expand(Seq(a, b))
+    } else {
+      Seq(a, b)
+    }
+    f(r, ta.payload, tb.payload)
+
+    MemoryManager.memCheck(TH.THFloatTensor_numel(r))
+    new NDArray(r)
   }
 
+  def mul(t1: NDArray, t2: NDArray): NDArray =
+    binOp(TH.THFloatTensor_cmul, t1, t2)
+
+  def sub(a: NDArray, b: NDArray): NDArray =
+    binOp((r, t, u) => TH.THFloatTensor_csub(r, t, 1, u), a, b)
+
+  def add(a: NDArray, b: NDArray): NDArray =
+    binOp((r, t, u) => TH.THFloatTensor_cadd(r, t, 1, u), a, b)
+
+  def expand(target: NDArray, source: NDArray): NDArray =
+    if (target.shape == source.shape) {
+      target
+    } else {
+      val u = TH.THFloatTensor_newExpand(
+        target.payload,
+        TH.THLongStorage_newWithData(source.payload.getSize, source.dim))
+      new NDArray(u)
+    }
+
   def expand(as: Seq[NDArray]): Seq[NDArray] = {
-    val shape = commonShape(as.map(_.shape))
-    logger.debug(s"common shape = $shape")
-    as.map { a =>
-      val t = TH.THFloatTensor_newExpand(a.payload, longStorage(shape))
-      new NDArray(t)
+    val shapes = as.map(_.shape)
+    if (shapes.forall(_ == shapes.head))
+      as
+    else {
+      val shape = commonShape(shapes)
+      logger.debug(s"common shape = $shape")
+      as.map { a =>
+        val t = TH.THFloatTensor_newExpand(a.payload, longStorage(shape))
+        new NDArray(t)
+      }
     }
   }
 

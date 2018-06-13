@@ -5,6 +5,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import botkop.numsca.{NDArray => nd}
+import torch.cpu.{TH, THJNI}
 
 class NDArraySpec extends FlatSpec with Matchers {
 
@@ -107,16 +108,26 @@ class NDArraySpec extends FlatSpec with Matchers {
   it should "cmul" in {
     val t1 = NDArray.arange(1, 10)
     val t2 = NDArray.arange(2, 11)
-    val t3 = NDArray.cmul(t2, t1)
+    val t3 = NDArray.mul(t2, t1)
     println(t3.shape)
     println(t3.data.toList)
   }
 
   it should "reshape" in {
     val a = NDArray.arange(max = 9)
-    println(a.shape)
+    println(a.payload.getStorage.getRefcount)
     val b = a.reshape(List(3, 3))
-    println(b.shape)
+    println(a.payload.getStorage.getRefcount)
+    println(a.payload.getStorage.getRefcount)
+
+    b(1, 1) := 999
+
+    a.shape shouldBe List(9)
+    b.shape shouldBe List(3, 3)
+    a isSameAs b shouldBe false
+    a.data shouldBe b.data
+    a.data shouldBe Array(0.0, 1.0, 2.0, 3.0, 999.0, 5.0, 6.0, 7.0, 8.0)
+    a.payload.getStorage.getRefcount shouldBe 2
 
   }
 
@@ -315,4 +326,76 @@ class NDArraySpec extends FlatSpec with Matchers {
     // bidirectional
     verify(List(8, 1, 6, 1), List(7, 1, 5), List(8, 7, 6, 5))
   }
+
+  it should "broadcast operations" in {
+    val x = nd.arange(max = 4)
+    val xx = x.reshape(4, 1)
+    val y = nd.ones(5)
+    val z = nd.ones(3, 4)
+
+    // does not work
+//    try {
+//      println(x + y)
+//    } catch {
+//      case t: Throwable =>
+//        println("caught")
+//    }
+
+    (xx + y).shape shouldBe List(4, 5)
+
+    val s1 = nd(
+      1, 1, 1, 1, 1, //
+      2, 2, 2, 2, 2, //
+      3, 3, 3, 3, 3, //
+      4, 4, 4, 4, 4 //
+    ).reshape(4, 5)
+    (xx + y) isSameAs s1 shouldBe true
+
+    val s2 = nd(
+        1, 2, 3, 4, //
+        1, 2, 3, 4, //
+        1, 2, 3, 4 //
+      ).reshape(3, 4)
+    (x + z) isSameAs s2 shouldBe true
+
+    // outer sum
+    val a = nd(0, 10, 20, 30).reshape(4, 1)
+    val b = nd(1, 2, 3)
+    val c = nd(
+      1, 2, 3, //
+      11, 12, 13, //
+      21, 22, 23, //
+      31, 32, 33 //
+    ).reshape(4, 3)
+
+    (a + b) isSameAs c shouldBe true
+
+    val observation = nd(111, 188)
+    val codes = nd(
+      102, 203, //
+      132, 193, //
+      45, 155, //
+      57, 173 //
+    ).reshape(4, 2)
+    val diff = codes - observation
+//    val dist = nd.sqrt(nd.sum(nd.square(diff), axis = -1))
+//    val nearest = nd.argmin(dist).squeeze()
+//    assert(nearest == 0)
+  }
+
+  it should "aaa" in {
+    val a = nd.arange(max = 10)
+    println(a.payload.getStorage.getRefcount)
+    println(a.payload.getStorage.getData)
+    val b = a.reshape(5, 2)
+    println(b.payload.getStorage.getRefcount)
+    println(a.payload.getStorage.getData)
+
+    b(3) := 9999
+
+    println(a)
+    println(b)
+
+  }
+
 }
