@@ -192,7 +192,10 @@ object NDArray extends LazyLogging {
   }
 
   def reshape(a: NDArray, newShape: List[Int]): NDArray = {
-    val t = TH.THFloatTensor_newWithStorage(a.payload.getStorage, a.payload.getStorageOffset, longStorage(newShape), null)
+    val t = TH.THFloatTensor_newWithStorage(a.payload.getStorage,
+                                            a.payload.getStorageOffset,
+                                            longStorage(newShape),
+                                            null)
     // this creates a new storage tensor
     // TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
     new NDArray(t)
@@ -364,6 +367,25 @@ object NDArray extends LazyLogging {
   def add(a: NDArray, b: NDArray): NDArray =
     binOp((r, t, u) => TH.THFloatTensor_cadd(r, t, 1, u), a, b)
 
+  //==================================================
+  def sum(a: NDArray, axis: Int, keepDim: Boolean = true): NDArray = {
+    val r = TH.THFloatTensor_new()
+    TH.THFloatTensor_sum(r, a.payload, axis, if (keepDim) 1 else 0)
+    new NDArray(r)
+  }
+
+  def sum(a: NDArray): Double = TH.THFloatTensor_sumall(a.payload)
+
+  def argmin(a: NDArray, axis: Int, keepDim: Boolean = true) = {
+    // public static void THFloatTensor_min(THFloatTensor values_, THLongTensor indices_, THFloatTensor t, int dimension, int keepdim) {
+    val values = TH.THFloatTensor_new()
+    val indices = TH.THLongTensor_new()
+    TH.THFloatTensor_min(values, indices, a.payload, axis, if (keepDim) 1 else 0)
+    // cast long tensor to float ?
+
+  }
+
+  //==================================================
   def expand(target: NDArray, source: NDArray): NDArray =
     if (target.shape == source.shape) {
       target

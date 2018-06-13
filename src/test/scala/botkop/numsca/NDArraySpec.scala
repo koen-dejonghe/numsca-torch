@@ -378,8 +378,8 @@ class NDArraySpec extends FlatSpec with Matchers {
       57, 173 //
     ).reshape(4, 2)
     val diff = codes - observation
-//    val dist = nd.sqrt(nd.sum(nd.square(diff), axis = -1))
-//    val nearest = nd.argmin(dist).squeeze()
+    val dist = nd.sqrt(nd.sum(nd.square(diff), axis = -1))
+    val nearest = nd.argmin(dist).squeeze()
 //    assert(nearest == 0)
   }
 
