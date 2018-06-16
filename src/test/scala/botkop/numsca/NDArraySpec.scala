@@ -343,20 +343,7 @@ class NDArraySpec extends FlatSpec with Matchers {
       31, 32, 33 //
     ).reshape(4, 3)
 
-//    println(a)
-//    println(b)
-
-    val r = a + b
-
-    println("r = " + r)
-    println("a = " + a)
-//
-//    println(a)
-//    println(b)
-//    println(r)
-
     (a + b) isSameAs c shouldBe true
-    /*
 
     val observation = nd(111, 188)
     val codes = nd(
@@ -367,13 +354,13 @@ class NDArraySpec extends FlatSpec with Matchers {
     ).reshape(4, 2)
     val diff = codes - observation
 
-
-    val dist = nd.sqrt(nd.sum(nd.square(diff), axis = -1))
-    val nearest = nd.argmin(dist,  0).squeeze()
-
-    println(nearest)
-    //    assert(nearest == 0)
-    */
+    println(diff)
+    val sq = nd.square(diff)
+    println(sq)
+    val sum = nd.sum(sq, axis = -1)
+    println(sum)
+    val am = nd.argmin(sum, 0).squeeze()
+    assert (am.value(0) == 0)
   }
 
   it should "expand nd" in {
@@ -393,8 +380,8 @@ class NDArraySpec extends FlatSpec with Matchers {
       println(a3)
       println(a4)
 
-//      a3 isSameAs nd.zeros(expectedShape) shouldBe true
-//      a4 isSameAs nd.ones(expectedShape) shouldBe true
+      a3 isSameAs nd.zeros(expectedShape) shouldBe true
+      a4 isSameAs nd.ones(expectedShape) shouldBe true
     }
 
     verify(List(5, 4), List(1), List(5, 4))

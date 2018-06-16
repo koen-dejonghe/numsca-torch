@@ -34,11 +34,10 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
   override def toString: String =
     s"tensor of shape $shape and stride $stride ($realSize / $size)\n" + data.toList
 
-  def data: Array[Float] = {
-    val p = TH.THFloatTensor_data(payload)
-    val a = CFloatArray.frompointer(p)
-    (0 until size).map(a.getitem).toArray
-  }
+  def data: Array[Float] = NDArray.data(this)
+
+  def value(ix: List[Int]): Float = NDArray.getValue(this, ix)
+  def value(ix: Int*): Float = NDArray.getValue(this, ix.toList)
 
   /**
     * Free tensor and notify memory manager
@@ -90,6 +89,14 @@ object NDArray extends LazyLogging {
   def copy(a: NDArray): NDArray = {
     val t = TH.THFloatTensor_newClone(a.payload)
     new NDArray(t)
+  }
+
+  def data(a: NDArray): Array[Float] = data(a.payload)
+
+  def data(t: THFloatTensor): Array[Float] = {
+    val p = TH.THFloatTensor_data(t)
+    val pa = CFloatArray.frompointer(p)
+    (0 until TH.THFloatTensor_numel(t)).map(pa.getitem).toArray
   }
 
   def create(data: Array[Float], shape: List[Int]): NDArray = {
@@ -390,9 +397,15 @@ object NDArray extends LazyLogging {
                          a.payload,
                          axis,
                          if (keepDim) 1 else 0)
-    val t = TH.THFloatTensor_new()
+
+    val indexSize = TH.THLongStorage_newWithData(indices.getSize, indices.getNDimension)
+
+//    val t = TH.THFloatTensor_newWithSize1d(1)
+    val t = TH.THFloatTensor_newWithSize(indexSize, null)
+
     TH.THFloatTensor_copyLong(t, indices)
     new NDArray(t)
+
   }
 
   def expandNd(as: Seq[NDArray]): Seq[NDArray] =
