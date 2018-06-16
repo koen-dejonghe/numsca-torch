@@ -5,7 +5,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 import botkop.numsca.{NDArray => nd}
-import torch.cpu.{TH, THJNI}
+import torch.cpu.{TH, THJNI, THLongStorage}
 
 class NDArraySpec extends FlatSpec with Matchers {
 
@@ -288,43 +288,14 @@ class NDArraySpec extends FlatSpec with Matchers {
     b2 isSameAs nd(3, 4) shouldBe true
   }
 
-  it should "broadcast with another tensor" in {
+  it should "add" in {
+    val x = nd.arange(max = 4)
+    val y = nd.ones(4)
+    val z = x + y
 
-    def verify(shape1: List[Int],
-               shape2: List[Int],
-               expectedShape: List[Int]): Unit = {
-
-      val a1 = nd.zeros(shape1)
-      val a2 = nd.zeros(shape2)
-      val a3 = nd.expand(a2, a1)
-      a3.shape shouldBe expectedShape
-    }
-
-    verify(List(256, 256, 3), List(3), List(256, 256, 3))
-    verify(List(5, 4), List(1), List(5, 4))
-    verify(List(15, 3, 5), List(15, 1, 5), List(15, 3, 5))
-    verify(List(15, 3, 5), List(3, 5), List(15, 3, 5))
-    verify(List(15, 3, 5), List(3, 1), List(15, 3, 5))
-
-  }
-
-  it should "broadcast in both directions" in {
-
-    def verify(shape1: List[Int],
-               shape2: List[Int],
-               expectedShape: List[Int]): Unit = {
-
-      val a1 = nd.zeros(shape1)
-      val a2 = nd.zeros(shape2)
-      val Seq(a3, a4) = nd.expand(Seq(a2, a1))
-      println(a3.shape)
-      println(a4.shape)
-      a3.shape shouldBe expectedShape
-      a4.shape shouldBe expectedShape
-    }
-
-    // bidirectional
-    verify(List(8, 1, 6, 1), List(7, 1, 5), List(8, 7, 6, 5))
+    x isSameAs nd.create(0, 1, 2, 3) shouldBe true
+    y isSameAs nd.create(1, 1, 1, 1) shouldBe true
+    z isSameAs nd.create(1, 2, 3, 4) shouldBe true
   }
 
   it should "broadcast operations" in {
@@ -343,6 +314,7 @@ class NDArraySpec extends FlatSpec with Matchers {
 
     (xx + y).shape shouldBe List(4, 5)
 
+
     val s1 = nd(
       1, 1, 1, 1, 1, //
       2, 2, 2, 2, 2, //
@@ -358,6 +330,9 @@ class NDArraySpec extends FlatSpec with Matchers {
       ).reshape(3, 4)
     (x + z) isSameAs s2 shouldBe true
 
+  }
+
+  it should "outer sum" in {
     // outer sum
     val a = nd(0, 10, 20, 30).reshape(4, 1)
     val b = nd(1, 2, 3)
@@ -368,7 +343,20 @@ class NDArraySpec extends FlatSpec with Matchers {
       31, 32, 33 //
     ).reshape(4, 3)
 
+//    println(a)
+//    println(b)
+
+    val r = a + b
+
+    println("r = " + r)
+    println("a = " + a)
+//
+//    println(a)
+//    println(b)
+//    println(r)
+
     (a + b) isSameAs c shouldBe true
+    /*
 
     val observation = nd(111, 188)
     val codes = nd(
@@ -378,23 +366,44 @@ class NDArraySpec extends FlatSpec with Matchers {
       57, 173 //
     ).reshape(4, 2)
     val diff = codes - observation
+
+
     val dist = nd.sqrt(nd.sum(nd.square(diff), axis = -1))
-    val nearest = nd.argmin(dist).squeeze()
-//    assert(nearest == 0)
+    val nearest = nd.argmin(dist,  0).squeeze()
+
+    println(nearest)
+    //    assert(nearest == 0)
+    */
   }
 
-  it should "aaa" in {
-    val a = nd.arange(max = 10)
-    println(a.payload.getStorage.getRefcount)
-    println(a.payload.getStorage.getData)
-    val b = a.reshape(5, 2)
-    println(b.payload.getStorage.getRefcount)
-    println(a.payload.getStorage.getData)
+  it should "expand nd" in {
 
-    b(3) := 9999
+    def verify(shape1: List[Int],
+               shape2: List[Int],
+               expectedShape: List[Int]): Unit = {
 
-    println(a)
-    println(b)
+      val a1 = nd.zeros(shape1)
+      val a2 = nd.ones(shape2)
+      val Seq(a3, a4) = nd.expandNd(Seq(a2, a1))
+      println(a3.shape)
+      println(a4.shape)
+      a3.shape shouldBe expectedShape
+      a4.shape shouldBe expectedShape
+
+      println(a3)
+      println(a4)
+
+//      a3 isSameAs nd.zeros(expectedShape) shouldBe true
+//      a4 isSameAs nd.ones(expectedShape) shouldBe true
+    }
+
+    verify(List(5, 4), List(1), List(5, 4))
+    verify(List(256, 256, 3), List(3), List(256, 256, 3))
+    verify(List(15, 3, 5), List(15, 1, 5), List(15, 3, 5))
+    verify(List(15, 3, 5), List(3, 5), List(15, 3, 5))
+    verify(List(15, 3, 5), List(3, 1), List(15, 3, 5))
+    // bidirectional
+    verify(List(8, 1, 6, 1), List(7, 1, 5), List(8, 7, 6, 5))
 
   }
 

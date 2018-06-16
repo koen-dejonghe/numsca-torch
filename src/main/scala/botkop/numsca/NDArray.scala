@@ -9,7 +9,7 @@ import scala.language.{implicitConversions, postfixOps}
 
 class NDArray private (val payload: THFloatTensor) extends LazyLogging {
 
-  logger.info(s"refcount: ${payload.getRefcount}")
+//  logger.info(s"refcount: ${payload.getRefcount}")
 
   val dim: Int = payload.getNDimension
 
@@ -18,12 +18,21 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
     (0 until dim).toList.map(i => s.getitem(i).toInt)
   }
 
-  val size: Int = shape.product
+  val stride: List[Int] = {
+    val s = CInt64Array.frompointer(payload.getStride)
+    (0 until dim).toList.map(i => s.getitem(i).toInt)
+  }
+
+  // val size: Int = shape.product
+  val size: Int = numel
+  val realSize: Int =
+    shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
   def desc: String = TH.THFloatTensor_desc(payload).getStr
   def numel: Int = TH.THFloatTensor_numel(payload)
 
-  override def toString: String = desc + "\n" + data.toList
+  override def toString: String =
+    s"tensor of shape $shape and stride $stride ($realSize / $size)\n" + data.toList
 
   def data: Array[Float] = {
     val p = TH.THFloatTensor_data(payload)
@@ -35,10 +44,9 @@ class NDArray private (val payload: THFloatTensor) extends LazyLogging {
     * Free tensor and notify memory manager
     */
   override def finalize(): Unit = {
-    val memSize = MemoryManager.dec(size) // obtain size before freeing!
-    logger.debug(s"freeing (mem = $memSize)")
-    payload.delete()
-    // TH.THFloatTensor_free(payload)
+//    val memSize = MemoryManager.dec(size) // obtain size before freeing!
+//    logger.debug(s"freeing (mem = $memSize)")
+//    payload.delete()
   }
 
   def copy(): NDArray = NDArray.copy(this)
@@ -169,7 +177,7 @@ object NDArray extends LazyLogging {
 
   // utility functions -----------------------------
 
-  private def longStorage(shape: Seq[Int]): THLongStorage = {
+  def longStorage(shape: Seq[Int]): THLongStorage = {
     val size = shape.length
     val data = new CInt64Array(size)
     var i = 0
@@ -180,7 +188,7 @@ object NDArray extends LazyLogging {
     TH.THLongStorage_newWithData(data.cast(), size)
   }
 
-  private def floatArray(data: Array[Float]): SWIGTYPE_p_float = {
+  def floatArray(data: Array[Float]): SWIGTYPE_p_float = {
     val size = data.length
     val a = new CFloatArray(size)
     var i = 0
@@ -196,8 +204,9 @@ object NDArray extends LazyLogging {
                                             a.payload.getStorageOffset,
                                             longStorage(newShape),
                                             null)
-    // this creates a new storage tensor
-    // TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
+//     this creates a new storage tensor
+//    val t = TH.THFloatTensor_new()
+//    TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
     new NDArray(t)
   }
 
@@ -344,83 +353,73 @@ object NDArray extends LazyLogging {
    */
   def binOp(f: (THFloatTensor, THFloatTensor, THFloatTensor) => Unit,
             a: NDArray,
-            b: NDArray,
-            equiShape: Boolean = true): NDArray = {
+            b: NDArray): NDArray = {
     val r = TH.THFloatTensor_new()
-    val Seq(ta, tb) = if (equiShape) {
-      expand(Seq(a, b))
-    } else {
-      Seq(a, b)
-    }
+    val Seq(ta, tb) = expandNd(Seq(a, b))
     f(r, ta.payload, tb.payload)
-
-    MemoryManager.memCheck(TH.THFloatTensor_numel(r))
+    MemoryManager.memCheck(TH.THFloatTensor_numel(r)) // not really correct: too much allocated when stride = 0
     new NDArray(r)
   }
 
   def mul(t1: NDArray, t2: NDArray): NDArray =
     binOp(TH.THFloatTensor_cmul, t1, t2)
 
-  def sub(a: NDArray, b: NDArray): NDArray =
+  def sub(a: NDArray, b: NDArray): NDArray = {
     binOp((r, t, u) => TH.THFloatTensor_csub(r, t, 1, u), a, b)
+  }
 
-  def add(a: NDArray, b: NDArray): NDArray =
+  def add(a: NDArray, b: NDArray): NDArray = {
     binOp((r, t, u) => TH.THFloatTensor_cadd(r, t, 1, u), a, b)
+  }
 
   //==================================================
   def sum(a: NDArray, axis: Int, keepDim: Boolean = true): NDArray = {
     val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_sum(r, a.payload, axis, if (keepDim) 1 else 0)
+    val nAxis = if (axis < 0) a.dim + axis else axis
+    TH.THFloatTensor_sum(r, a.payload, nAxis, if (keepDim) 1 else 0)
     new NDArray(r)
   }
 
   def sum(a: NDArray): Double = TH.THFloatTensor_sumall(a.payload)
 
-  def argmin(a: NDArray, axis: Int, keepDim: Boolean = true) = {
-    // public static void THFloatTensor_min(THFloatTensor values_, THLongTensor indices_, THFloatTensor t, int dimension, int keepdim) {
+  def argmin(a: NDArray, axis: Int, keepDim: Boolean = true): NDArray = {
     val values = TH.THFloatTensor_new()
     val indices = TH.THLongTensor_new()
-    TH.THFloatTensor_min(values, indices, a.payload, axis, if (keepDim) 1 else 0)
-    // cast long tensor to float ?
-
+    TH.THFloatTensor_min(values,
+                         indices,
+                         a.payload,
+                         axis,
+                         if (keepDim) 1 else 0)
+    val t = TH.THFloatTensor_new()
+    TH.THFloatTensor_copyLong(t, indices)
+    new NDArray(t)
   }
 
-  //==================================================
-  def expand(target: NDArray, source: NDArray): NDArray =
-    if (target.shape == source.shape) {
-      target
-    } else {
-      val u = TH.THFloatTensor_newExpand(
-        target.payload,
-        TH.THLongStorage_newWithData(source.payload.getSize, source.dim))
-      new NDArray(u)
-    }
-
-  def expand(as: Seq[NDArray]): Seq[NDArray] = {
-    val shapes = as.map(_.shape)
-    if (shapes.forall(_ == shapes.head))
+  def expandNd(as: Seq[NDArray]): Seq[NDArray] =
+    if (as.forall(_.shape == as.head.shape)) {
       as
-    else {
-      val shape = commonShape(shapes)
-      logger.debug(s"common shape = $shape")
-      as.map { a =>
-        val t = TH.THFloatTensor_newExpand(a.payload, longStorage(shape))
-        new NDArray(t)
+    } else {
+      val original = TH.new_CFloatTensorArray(as.length)
+      as.indices.foreach { i =>
+        TH.CFloatTensorArray_setitem(original, i, as(i).payload)
       }
-    }
-  }
 
-  def commonShape(sa: Seq[Shape]): Shape = {
-    val maxRank = sa.map(_.length).max
-    val xa = sa.map { a =>
-      val diff = maxRank - a.length
-      val extShape = List.fill(diff)(1)
-      extShape ++ a
+      val results = TH.new_CFloatTensorArray(as.length)
+      as.indices.foreach { i =>
+        val t = TH.THFloatTensor_new()
+        TH.CFloatTensorArray_setitem(results, i, t)
+      }
+
+      TH.THFloatTensor_expandNd(results, original, as.length)
+      val resized = as.indices.foldLeft(Seq.empty[NDArray]) {
+        case (rs, i) =>
+          rs :+ new NDArray(TH.CFloatTensorArray_getitem(results, i))
+      }
+
+      TH.delete_CFloatTensorArray(original)
+      TH.delete_CFloatTensorArray(results)
+
+      resized
     }
-    xa.foldLeft(List.fill(maxRank)(0)) {
-      case (shp, acc) =>
-        shp.zip(acc).map { case (a, b) => math.max(a, b) }
-    }
-  }
 
 }
