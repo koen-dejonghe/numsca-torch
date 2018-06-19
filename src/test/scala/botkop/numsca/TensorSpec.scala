@@ -1,19 +1,18 @@
 package botkop.numsca
 
+import botkop.{numsca => ns}
 import org.scalatest.{FlatSpec, Matchers}
+import torch.cpu.{SWIGTYPE_p_void, TH}
 
-import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
-import botkop.numsca.{NDArray => nd}
-import torch.cpu.{TH, THJNI, THLongStorage}
 
-class NDArraySpec extends FlatSpec with Matchers {
+class TensorSpec extends FlatSpec with Matchers {
 
-  "An ND array" should "create with provided data" in {
+  "A tensor" should "create with provided data" in {
 
     val data = (1 until 7).toArray.map(_.toFloat)
     val shape = List(2, 3)
-    val a = NDArray.create(data, shape)
+    val a = ns.create(data, shape)
 
     a.dim shouldBe 2
     a.shape shouldBe List(2, 3)
@@ -23,15 +22,16 @@ class NDArraySpec extends FlatSpec with Matchers {
 
   it should "make a zero array" in {
     val shape = List(2, 3)
-    val z = NDArray.zeros(shape)
+    val z = ns.zeros(shape)
     z.shape shouldBe List(2, 3)
     z.data shouldBe Array(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
   }
 
+  /*
   it should "free when no longer used" in {
-    val t3 = NDArray.ones(List(100, 100)) // this one will only get garbage collected at the end of the program
+    val t3 = ns.ones(List(100, 100)) // this one will only get garbage collected at the end of the program
     for (_ <- 0 until 100) {
-      NDArray.zeros(List(3000, 3000)) // these will get GC'ed as soon as as System.gc() is called
+      ns.zeros(List(3000, 3000)) // these will get GC'ed as soon as as System.gc() is called
       Thread.sleep(1)
     }
     t3.desc shouldBe "torch.xTensor of size 100x100"
@@ -42,12 +42,12 @@ class NDArraySpec extends FlatSpec with Matchers {
     import scala.concurrent.ExecutionContext.Implicits.global
     import scala.concurrent.duration._
 
-    val t3 = NDArray.ones(100, 100) // this one will only get garbage collected at the end of the program
+    val t3 = ns.ones(100, 100) // this one will only get garbage collected at the end of the program
 
     val futures = Future.sequence {
       (0 until 100).map { _ =>
         Future {
-          NDArray.zeros(3000, 3000) // these will get GC'ed as soon as as System.gc() is called
+          ns.zeros(3000, 3000) // these will get GC'ed as soon as as System.gc() is called
           Thread.sleep(10)
         }
       }
@@ -57,27 +57,28 @@ class NDArraySpec extends FlatSpec with Matchers {
     t3.desc shouldBe "torch.xTensor of size 100x100"
     t3.data.sum shouldBe 100 * 100
   }
+  */
 
   it should "arange" in {
-    val t = NDArray.arange(max = 10.0)
+    val t = ns.arange(max = 10.0)
     t.shape shouldBe List(10)
     t.data shouldBe Array(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
 
-    val u = NDArray.arange(max = 10.0, step = 2.5)
+    val u = ns.arange(max = 10.0, step = 2.5)
     u.shape shouldBe List(4)
     u.data shouldBe Array(0.0, 2.5, 5.0, 7.5)
   }
 
   it should "seed" in {
-    NDArray.setSeed(213L)
-    val t = NDArray.randn(2, 3)
+    ns.setSeed(213L)
+    val t = ns.randn(2, 3)
     println(t.data.toList)
     // hard to test
   }
 
   it should "randn" in {
-    NDArray.setSeed(213L)
-    val t = NDArray.randn(1000)
+    ns.setSeed(213L)
+    val t = ns.randn(1000)
     t.shape shouldBe List(1000)
     val data = t.data
     val mean = data.sum / data.length
@@ -90,15 +91,15 @@ class NDArraySpec extends FlatSpec with Matchers {
   }
 
   it should "randint" in {
-    NDArray.setSeed(213L)
-    val t = NDArray.randint(high = 10.0, shape = List(10))
+    ns.setSeed(213L)
+    val t = ns.randint(high = 10.0, shape = List(10))
     val data = t.data
     println(data.toList)
   }
 
   it should "linspace" in {
     val steps = 5
-    val t = NDArray.linspace(0, 1, steps)
+    val t = ns.linspace(0, 1, steps)
     t.shape shouldBe List(steps)
     val data = t.data
     data shouldBe Array(0.0, 0.25, 0.5, 0.75, 1.0)
@@ -106,15 +107,15 @@ class NDArraySpec extends FlatSpec with Matchers {
 
   //--------------------
   it should "cmul" in {
-    val t1 = NDArray.arange(1, 10)
-    val t2 = NDArray.arange(2, 11)
-    val t3 = NDArray.mul(t2, t1)
+    val t1 = ns.arange(1, 10)
+    val t2 = ns.arange(2, 11)
+    val t3 = ns.mul(t2, t1)
     println(t3.shape)
     println(t3.data.toList)
   }
 
   it should "reshape" in {
-    val a = NDArray.arange(max = 9)
+    val a = ns.arange(max = 9)
     println(a.payload.getStorage.getRefcount)
     val b = a.reshape(List(3, 3))
     println(a.payload.getStorage.getRefcount)
@@ -127,20 +128,19 @@ class NDArraySpec extends FlatSpec with Matchers {
     a isSameAs b shouldBe false
     a.data shouldBe b.data
     a.data shouldBe Array(0.0, 1.0, 2.0, 3.0, 999.0, 5.0, 6.0, 7.0, 8.0)
-    a.payload.getStorage.getRefcount shouldBe 2
 
   }
 
   it should "select" in {
-    val a = NDArray.arange(max = 9).reshape(3, 3)
-    val b = NDArray.select(a, dimension = 0, sliceIndex = 1)
+    val a = ns.arange(max = 9).reshape(3, 3)
+    val b = ns.select(a, dimension = 0, sliceIndex = 1)
     println(b.shape)
     println(b.data.toList)
 
   }
 
   it should "select 2" in {
-    val a = NDArray.arange(max = 8).reshape(2, 2, 2)
+    val a = ns.arange(max = 8).reshape(2, 2, 2)
     // val r = NDArray.select(a, List(0, 1, 0))
     val r = a(0, 1, 0)
 
@@ -149,36 +149,36 @@ class NDArraySpec extends FlatSpec with Matchers {
   }
 
   it should "assign to a selection" in {
-    val a = NDArray.arange(max = 8).reshape(2, 2, 2)
-    val r = NDArray.randn(1)
+    val a = ns.arange(max = 8).reshape(2, 2, 2)
+    val r = ns.randn(1)
     a(0, 1, 0) := r
     println(a.data.toList)
 
-    val r2 = NDArray.fill(3.14f, List(2, 2))
+    val r2 = ns.fill(3.14f, List(2, 2))
     a(1) := r2
     println(a.data.toList)
 
     // broadcasting
-    val r3 = NDArray(100)
+    val r3 = ns.tensor(100)
     a(0) := r3
     println(a.data.toList)
   }
 
   it should "narrow" in {
-    val a = NDArray.arange(max = 8).reshape(2, 2, 2)
-    val b = NDArray.narrow(a, dimension = 0, firstIndex = 1, size = 1)
-    NDArray.setValue(b, 3.17f, List(0, 0, 0))
+    val a = ns.arange(max = 8).reshape(2, 2, 2)
+    val b = ns.narrow(a, dimension = 0, firstIndex = 1, size = 1)
+    ns.setValue(b, 3.17f, List(0, 0, 0))
     println(b.shape)
     println(b.data.toList)
     println(a.data.toList)
   }
 
   it should "linear" in {
-    val x = NDArray.randint(1, 5, List(2, 3))
-    val y = NDArray.randint(1, 5, List(3, 4))
-    val b = NDArray.randint(1, 5, List(2, 4))
+    val x = ns.randint(1, 5, List(2, 3))
+    val y = ns.randint(1, 5, List(3, 4))
+    val b = ns.randint(1, 5, List(2, 4))
 
-    val r = NDArray.linear(x, y, b)
+    val r = ns.linear(x, y, b)
     println(r.shape)
     println(r.data.toList)
 
@@ -188,9 +188,9 @@ class NDArraySpec extends FlatSpec with Matchers {
   //============================
   // numsca tests
 
-  val ta: NDArray = NDArray.arange(max = 10)
-  val tb: NDArray = NDArray.reshape(NDArray.arange(max = 9), 3, 3)
-  val tc: NDArray = NDArray.reshape(NDArray.arange(max = 2 * 3 * 4), 2, 3, 4)
+  val ta: Tensor = ns.arange(max = 10)
+  val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+  val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
 
   // Elements
   it should "retrieve the correct elements" in {
@@ -231,7 +231,7 @@ class NDArraySpec extends FlatSpec with Matchers {
 
   it should "slice over a single dimension" in {
 
-    val a0 = NDArray.arange(max = 10)
+    val a0 = ns.arange(max = 10)
 
     // A[1:]
     val a1 = a0(1 :>)
@@ -245,64 +245,64 @@ class NDArraySpec extends FlatSpec with Matchers {
     println(a2)
     println(a3)
 
-    assert(NDArray.equal(a3, NDArray.fill(1.0f, List(9))))
+    assert(ns.equal(a3, ns.fill(1.0f, List(9))))
 
-    assert(a0(5 :>) isSameAs NDArray(5, 6, 7, 8, 9))
-    assert(a0(0 :> 5) isSameAs NDArray(0, 1, 2, 3, 4))
+    assert(a0(5 :>) isSameAs ns.tensor(5, 6, 7, 8, 9))
+    assert(a0(0 :> 5) isSameAs ns.tensor(0, 1, 2, 3, 4))
 
     val s = 3 :> -1
-    ta(s) isSameAs nd(3, 4, 5, 6, 7, 8) shouldBe true
+    ta(s) isSameAs ns.tensor(3, 4, 5, 6, 7, 8) shouldBe true
 
   }
 
   it should "update over a single dimension" in {
 
-    val t = nd.arange(max = 10)
-    t(2 :> 5) := -nd.ones(3)
-    assert(t isSameAs nd(0, 1, -1, -1, -1, 5, 6, 7, 8, 9))
+    val t = ns.arange(max = 10)
+    t(2 :> 5) := -ns.ones(3)
+    assert(t isSameAs ns.tensor(0, 1, -1, -1, -1, 5, 6, 7, 8, 9))
 
     /* does not work: crashes instead
     an[Throwable] should be thrownBy {
-      t(2 :> 5) := -nd.ones(4)
+      t(2 :> 5) := -ns.ones(4)
     }
      */
 
     t(2 :> 5) := 33
-    t isSameAs nd(0, 1, 33, 33, 33, 5, 6, 7, 8, 9) shouldBe true
+    t isSameAs ns.tensor(0, 1, 33, 33, 33, 5, 6, 7, 8, 9) shouldBe true
 
     t(2 :> 5) -= 1
-    t isSameAs nd(0, 1, 32, 32, 32, 5, 6, 7, 8, 9) shouldBe true
+    t isSameAs ns.tensor(0, 1, 32, 32, 32, 5, 6, 7, 8, 9) shouldBe true
 
     t := -1
-    t isSameAs nd.fill(-1, List(10)) shouldBe true
+    t isSameAs ns.fill(-1, List(10)) shouldBe true
   }
 
   it should "slice over multiple dimensions" in {
-    val tb = nd.arange(max = 9).reshape(3, 3)
+    val tb = ns.arange(max = 9).reshape(3, 3)
     val b1 = tb(0 :> 2, :>)
-    b1 isSameAs nd.arange(max = 6).reshape(2, 3) shouldBe true
+    b1 isSameAs ns.arange(max = 6).reshape(2, 3) shouldBe true
   }
 
   it should "slice over multiple dimensions with integer indexing" in {
     val b2 = tb(1, 0 :> -1)
-    b2 isSameAs nd(3, 4) shouldBe true
+    b2 isSameAs ns.tensor(3, 4) shouldBe true
   }
 
   it should "add" in {
-    val x = nd.arange(max = 4)
-    val y = nd.ones(4)
+    val x = ns.arange(max = 4)
+    val y = ns.ones(4)
     val z = x + y
 
-    x isSameAs nd.create(0, 1, 2, 3) shouldBe true
-    y isSameAs nd.create(1, 1, 1, 1) shouldBe true
-    z isSameAs nd.create(1, 2, 3, 4) shouldBe true
+    x isSameAs ns.create(0, 1, 2, 3) shouldBe true
+    y isSameAs ns.create(1, 1, 1, 1) shouldBe true
+    z isSameAs ns.create(1, 2, 3, 4) shouldBe true
   }
 
   it should "broadcast operations" in {
-    val x = nd.arange(max = 4)
+    val x = ns.arange(max = 4)
     val xx = x.reshape(4, 1)
-    val y = nd.ones(5)
-    val z = nd.ones(3, 4)
+    val y = ns.ones(5)
+    val z = ns.ones(3, 4)
 
     // does not work
 //    try {
@@ -314,8 +314,7 @@ class NDArraySpec extends FlatSpec with Matchers {
 
     (xx + y).shape shouldBe List(4, 5)
 
-
-    val s1 = nd(
+    val s1 = ns.tensor(
       1, 1, 1, 1, 1, //
       2, 2, 2, 2, 2, //
       3, 3, 3, 3, 3, //
@@ -323,30 +322,37 @@ class NDArraySpec extends FlatSpec with Matchers {
     ).reshape(4, 5)
     (xx + y) isSameAs s1 shouldBe true
 
-    val s2 = nd(
-        1, 2, 3, 4, //
-        1, 2, 3, 4, //
-        1, 2, 3, 4 //
-      ).reshape(3, 4)
+    val s2 = ns.tensor(
+      1, 2, 3, 4, //
+      1, 2, 3, 4, //
+      1, 2, 3, 4 //
+    ).reshape(3, 4)
     (x + z) isSameAs s2 shouldBe true
+
+    // also test same shape
+    val t1 = ns.arange(max = 9).reshape(3, 3)
+    val t2 = t1 + t1
+    assert(t2 isSameAs t1 * 2)
 
   }
 
   it should "outer sum" in {
     // outer sum
-    val a = nd(0, 10, 20, 30).reshape(4, 1)
-    val b = nd(1, 2, 3)
-    val c = nd(
+    val a = ns.tensor(0, 10, 20, 30).reshape(4, 1)
+    val b = ns.tensor(1, 2, 3)
+    val c = ns.tensor(
       1, 2, 3, //
       11, 12, 13, //
       21, 22, 23, //
       31, 32, 33 //
     ).reshape(4, 3)
 
+    println(c)
+
     (a + b) isSameAs c shouldBe true
 
-    val observation = nd(111, 188)
-    val codes = nd(
+    val observation = ns.tensor(111, 188)
+    val codes = ns.tensor(
       102, 203, //
       132, 193, //
       45, 155, //
@@ -355,12 +361,12 @@ class NDArraySpec extends FlatSpec with Matchers {
     val diff = codes - observation
 
     println(diff)
-    val sq = nd.square(diff)
+    val sq = ns.square(diff)
     println(sq)
-    val sum = nd.sum(sq, axis = -1)
+    val sum = ns.sum(sq, axis = -1)
     println(sum)
-    val am = nd.argmin(sum, 0).squeeze()
-    assert (am.value(0) == 0)
+    val am = ns.argmin(sum, 0).squeeze()
+    assert(am.value(0) == 0)
   }
 
   it should "expand nd" in {
@@ -369,9 +375,9 @@ class NDArraySpec extends FlatSpec with Matchers {
                shape2: List[Int],
                expectedShape: List[Int]): Unit = {
 
-      val a1 = nd.zeros(shape1)
-      val a2 = nd.ones(shape2)
-      val Seq(a3, a4) = nd.expandNd(Seq(a2, a1))
+      val a1 = ns.ones(shape1)
+      val a2 = ns.ones(shape2)
+      val Seq(a3, a4) = ns.expandNd(Seq(a2, a1))
       println(a3.shape)
       println(a4.shape)
       a3.shape shouldBe expectedShape
@@ -380,8 +386,11 @@ class NDArraySpec extends FlatSpec with Matchers {
       println(a3)
       println(a4)
 
-      a3 isSameAs nd.zeros(expectedShape) shouldBe true
-      a4 isSameAs nd.ones(expectedShape) shouldBe true
+//      a3 isSameAs ns.zeros(expectedShape) shouldBe true
+//      a4 isSameAs ns.ones(expectedShape) shouldBe true
+
+      ns.sum(a3) shouldBe ns.sum(a4)
+
     }
 
     verify(List(5, 4), List(1), List(5, 4))
@@ -392,6 +401,82 @@ class NDArraySpec extends FlatSpec with Matchers {
     // bidirectional
     verify(List(8, 1, 6, 1), List(7, 1, 5), List(8, 7, 6, 5))
 
+  }
+
+  it should "index select" in {
+    val primes = ns.tensor(2, 3, 5, 7, 11, 13, 17, 19, 23)
+    val idx = ns.tensor(3, 4, 1, 2, 2)
+    val r = ns.indexSelect(primes, 0, idx)
+    r isSameAs ns.tensor(7, 11, 3, 5, 5) shouldBe true
+
+    println(primes)
+    println(r(1))
+    // r(1) := 0f
+
+    TH.THFloatTensor_set1d(r.payload, 1, 377f)
+
+    println(primes)
+    println(r)
+
+    /*
+    val numSamples = 4
+    val numClasses = 2
+    val x = ns.arange(min = 10, max = numSamples * numClasses + 10).reshape(numSamples, numClasses)
+    println(x)
+    val y = NDArray(1, 0, 3, 2)
+    val s = ns.indexSelect(x, 0, y)
+    println(s)
+    */
+
+  }
+
+  it should "list-of-location index" in {
+    val numSamples = 4
+    val numClasses = 3
+    val x = ns.arange(max = numSamples * numClasses).reshape(numSamples, numClasses)
+
+    val y = ns.tensor(0, 1, 2, 1)
+    val z = x.select(ns.arange(max = numSamples), y).squeeze()
+
+    println(z)
+  }
+
+  it should "ix select" in {
+    val primes = ns.tensor(2, 3, 5, 7, 11, 13, 17, 19, 23)
+    val idx = List(3, 4, 1, 2, 2)
+    val r = ns.ixSelect(primes, idx)
+
+    println(r)
+
+    // r isSameAs ns.tensor(7, 11, 3, 5, 5) shouldBe true
+
+    println(primes)
+    println(r(1))
+    r(1) := 9999
+
+    println(primes)
+    println(r)
+
+  }
+
+  it should "simple nn" in {
+
+    val x = ns.arange(max = 12).reshape(List(4, 3))
+    val w = ns.arange(max = 80).reshape(20, 3)
+    val b = ns.arange(max = 20)
+
+    val state: SWIGTYPE_p_void = null
+
+    val y = ns.empty
+    val buffer = ns.empty
+
+
+    // public static void THNN_FloatLinear_updateOutput(SWIGTYPE_p_void state, THFloatTensor input, THFloatTensor output, THFloatTensor weight, THFloatTensor bias, THFloatTensor addBuffer) {
+    TH.THNN_FloatLinear_updateOutput(state, x.payload, y.payload, w.payload, b.payload, buffer.payload)
+
+    println(y)
+    println
+    println(buffer)
   }
 
 }
