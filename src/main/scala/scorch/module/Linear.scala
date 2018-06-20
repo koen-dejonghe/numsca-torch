@@ -1,7 +1,6 @@
 package scorch.module
 
-import botkop.{numsca => ns}
-import botkop.numsca.Tensor
+import ns.Tensor
 import scorch._
 import torch.cpu.TH
 
@@ -33,25 +32,21 @@ object Linear {
     }
 
     override def backward(gradOutput: Variable): Unit = {
-      val gradInput = ns.empty
-      // public static void THNN_FloatLinear_updateGradInput(SWIGTYPE_p_void state, THFloatTensor input, THFloatTensor gradOutput, THFloatTensor gradInput, THFloatTensor weight) {
+
       TH.THNN_FloatLinear_updateGradInput(null,
                                           x.array,
                                           gradOutput.array,
-                                          gradInput.array,
+                                          x.grad.array,
                                           weights.array)
-
-      val biasGradient = ns.empty
-      val weightGradient = ns.empty
 
       TH.THNN_FloatLinear_accGradParameters(null,
                                             x.array,
                                             gradOutput.array,
-                                            gradInput.array,
+                                            x.grad.array,
                                             weights.array,
                                             bias.array,
-                                            weightGradient.array,
-                                            biasGradient.array,
+                                            weights.grad.array,
+                                            bias.grad.array,
                                             buffer.array,
                                             1.0)
     }

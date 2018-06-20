@@ -1,12 +1,11 @@
-package botkop.numsca
+package ns
 
-import botkop.{numsca => ns}
 import com.typesafe.scalalogging.LazyLogging
 import torch.cpu._
 
 import scala.language.{implicitConversions, postfixOps}
 
-class Tensor private[numsca] (val array: THFloatTensor) extends LazyLogging {
+class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
 
   def dim: Int = array.getNDimension
 
@@ -66,7 +65,7 @@ class Tensor private[numsca] (val array: THFloatTensor) extends LazyLogging {
   def +=(a: Tensor): Unit = ns.addi(this, a)
 
   def -=(f: Float): Unit = ns.subi(this, f)
-  // def -=(a: Tensor): Unit = ns.subi(this, a)
+  // def -=(a: Tensor): Unit = numsca.subi(this, a)
 
   def *(f: Float): Tensor = ns.mul(this, f)
 
@@ -79,6 +78,5 @@ object Tensor extends LazyLogging {
 
   def apply(data: Array[Float]): Tensor = ns.create(data)
   def apply(data: Float*): Tensor = Tensor(data.toArray)
-  def apply(data: Double*): Tensor = Tensor(data.map(_.toFloat).toArray)
 
 }

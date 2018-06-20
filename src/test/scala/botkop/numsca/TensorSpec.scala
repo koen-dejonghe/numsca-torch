@@ -1,6 +1,6 @@
 package botkop.numsca
 
-import botkop.{numsca => ns}
+import ns._
 import org.scalatest.{FlatSpec, Matchers}
 import torch.cpu.{SWIGTYPE_p_void, TH}
 

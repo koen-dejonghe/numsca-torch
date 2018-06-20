@@ -1,5 +1,3 @@
-package botkop
-
 import java.math.BigInteger
 
 import com.typesafe.scalalogging.LazyLogging
@@ -7,7 +5,7 @@ import torch.cpu._
 
 import scala.language.implicitConversions
 
-package object numsca extends LazyLogging {
+package object ns extends LazyLogging {
 
   type Shape = List[Int]
 

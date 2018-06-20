@@ -1,16 +1,15 @@
 package scorch
 
-import botkop.{numsca => ns}
-import botkop.numsca.Tensor
 import com.typesafe.scalalogging.LazyLogging
+import ns.Tensor
 import torch.cpu.THFloatTensor
 
 import scala.language.implicitConversions
 
 object Variable {
-  def apply(d: Double): Variable = Variable(Tensor(d))
+  def apply(d: Double): Variable = Variable(Tensor(d.toFloat))
   def apply(d: Double, name: Option[String]): Variable =
-    Variable(Tensor(d), name = name)
+    Variable(Tensor(d.toFloat), name = name)
 
   implicit def moduleApply[T <: Module](m: T): (Variable) => Variable =
     m.forward

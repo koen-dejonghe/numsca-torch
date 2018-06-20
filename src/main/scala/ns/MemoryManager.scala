@@ -1,4 +1,4 @@
-package botkop.numsca
+package ns
 
 import java.util.concurrent.atomic.AtomicLong
 

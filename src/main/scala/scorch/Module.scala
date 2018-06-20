@@ -1,9 +1,6 @@
 package scorch
 
-import botkop.numsca.Tensor
-import botkop.{numsca => ns}
 import com.typesafe.scalalogging.LazyLogging
-import torch.cpu.TH
 
 abstract class BaseModule(localParameters: Seq[Variable] = Nil) {
 
