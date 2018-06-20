@@ -24,17 +24,36 @@ object Linear {
 
     override def forward(): Variable = {
       TH.THNN_FloatLinear_updateOutput(null,
-                                       x.payload,
-                                       out.payload,
-                                       weights.payload,
-                                       bias.payload,
-                                       buffer.payload)
+                                       x.array,
+                                       out.array,
+                                       weights.array,
+                                       bias.array,
+                                       buffer.array)
       Variable(out, Some(this))
     }
 
     override def backward(gradOutput: Variable): Unit = {
+      val gradInput = ns.empty
       // public static void THNN_FloatLinear_updateGradInput(SWIGTYPE_p_void state, THFloatTensor input, THFloatTensor gradOutput, THFloatTensor gradInput, THFloatTensor weight) {
-      TH.THNN_FloatLinear_updateGradInput(null, x.payload, gradOutput.payload, ???, weights.payload)
+      TH.THNN_FloatLinear_updateGradInput(null,
+                                          x.array,
+                                          gradOutput.array,
+                                          gradInput.array,
+                                          weights.array)
+
+      val biasGradient = ns.empty
+      val weightGradient = ns.empty
+
+      TH.THNN_FloatLinear_accGradParameters(null,
+                                            x.array,
+                                            gradOutput.array,
+                                            gradInput.array,
+                                            weights.array,
+                                            bias.array,
+                                            weightGradient.array,
+                                            biasGradient.array,
+                                            buffer.array,
+                                            1.0)
     }
 
   }

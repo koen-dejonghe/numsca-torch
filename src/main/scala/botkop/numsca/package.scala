@@ -37,7 +37,7 @@ package object numsca extends LazyLogging {
 
   /* === tensor creation ================================================================================= */
   def copy(a: Tensor): Tensor = {
-    val t = TH.THFloatTensor_newClone(a.payload)
+    val t = TH.THFloatTensor_newClone(a.array)
     new Tensor(t)
   }
 
@@ -146,8 +146,8 @@ package object numsca extends LazyLogging {
   }
 
   def reshape(a: Tensor, newShape: List[Int]): Tensor = {
-    val t = TH.THFloatTensor_newWithStorage(a.payload.getStorage,
-      a.payload.getStorageOffset,
+    val t = TH.THFloatTensor_newWithStorage(a.array.getStorage,
+      a.array.getStorageOffset,
       longStorage(newShape),
       null)
     //     this creates a new storage tensor
@@ -161,13 +161,13 @@ package object numsca extends LazyLogging {
   def setValue(a: Tensor, value: Float, index: List[Int]): Unit = {
     a.dim match {
       case 1 =>
-        TH.THFloatTensor_set1d(a.payload, index.head, value)
+        TH.THFloatTensor_set1d(a.array, index.head, value)
       case 2 =>
-        TH.THFloatTensor_set2d(a.payload, index.head, index(1), value)
+        TH.THFloatTensor_set2d(a.array, index.head, index(1), value)
       case 3 =>
-        TH.THFloatTensor_set3d(a.payload, index.head, index(1), index(2), value)
+        TH.THFloatTensor_set3d(a.array, index.head, index(1), index(2), value)
       case 4 =>
-        TH.THFloatTensor_set4d(a.payload,
+        TH.THFloatTensor_set4d(a.array,
           index.head,
           index(1),
           index(2),
@@ -179,13 +179,13 @@ package object numsca extends LazyLogging {
   def getValue(a: Tensor, index: List[Int]): Float = {
     a.dim match {
       case 1 =>
-        TH.THFloatTensor_get1d(a.payload, index.head)
+        TH.THFloatTensor_get1d(a.array, index.head)
       case 2 =>
-        TH.THFloatTensor_get2d(a.payload, index.head, index(1))
+        TH.THFloatTensor_get2d(a.array, index.head, index(1))
       case 3 =>
-        TH.THFloatTensor_get3d(a.payload, index.head, index(1), index(2))
+        TH.THFloatTensor_get3d(a.array, index.head, index(1), index(2))
       case 4 =>
-        TH.THFloatTensor_get4d(a.payload,
+        TH.THFloatTensor_get4d(a.array,
           index.head,
           index(1),
           index(2),
@@ -194,12 +194,12 @@ package object numsca extends LazyLogging {
   }
 
   def select(a: Tensor, dimension: Int, sliceIndex: Int): Tensor = {
-    val t = TH.THFloatTensor_newSelect(a.payload, dimension, sliceIndex)
+    val t = TH.THFloatTensor_newSelect(a.array, dimension, sliceIndex)
     new Tensor(t)
   }
 
   def narrow(a: Tensor, where: List[Int]): Tensor = {
-    val r = where.zipWithIndex.foldLeft(a.payload) {
+    val r = where.zipWithIndex.foldLeft(a.array) {
       case (t, (i, d)) =>
         TH.THFloatTensor_newNarrow(t, d, i, 1)
     }
@@ -210,7 +210,7 @@ package object numsca extends LazyLogging {
   }
 
   def narrow(a: Tensor, ranges: NumscaRangeSeq): Tensor = {
-    val r = ranges.rs.zipWithIndex.foldLeft(a.payload) {
+    val r = ranges.rs.zipWithIndex.foldLeft(a.array) {
       case (t, (i, d)) =>
         val to = i.t match {
           case None =>
@@ -231,7 +231,7 @@ package object numsca extends LazyLogging {
   }
 
   def assign(a: Tensor, f: Float): Tensor = {
-    TH.THFloatTensor_fill(a.payload, f)
+    TH.THFloatTensor_fill(a.array, f)
     a
   }
 
@@ -239,17 +239,17 @@ package object numsca extends LazyLogging {
     val t =
       if (a.size == src.size) {
         logger.debug("not broadcasting")
-        src.payload
+        src.array
       } else { // broadcast
         logger.debug("broadcasting")
-        TH.THFloatTensor_newExpand(src.payload, longStorage(a.shape))
+        TH.THFloatTensor_newExpand(src.array, longStorage(a.shape))
       }
-    TH.THFloatTensor_copy(a.payload, t)
+    TH.THFloatTensor_copy(a.array, t)
   }
 
   def squeeze(a: Tensor): Tensor = {
     val s = TH.THFloatTensor_new()
-    TH.THFloatTensor_squeeze(s, a.payload)
+    TH.THFloatTensor_squeeze(s, a.array)
     new Tensor(s)
   }
 
@@ -257,43 +257,43 @@ package object numsca extends LazyLogging {
              dimension: Int,
              firstIndex: Int,
              size: Int): Tensor = {
-    val t = TH.THFloatTensor_newNarrow(a.payload, dimension, firstIndex, size)
+    val t = TH.THFloatTensor_newNarrow(a.array, dimension, firstIndex, size)
     new Tensor(t)
   }
 
   def linear(x: Tensor, y: Tensor, b: Tensor): Tensor = {
     val t = TH.THFloatTensor_new()
-    TH.THFloatTensor_addmm(t, 1.0f, b.payload, 1.0f, x.payload, y.payload)
+    TH.THFloatTensor_addmm(t, 1.0f, b.array, 1.0f, x.array, y.array)
     new Tensor(t)
   }
 
   def mul(t: Tensor, f: Float): Tensor = {
     val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_mul(r, t.payload, f)
+    TH.THFloatTensor_mul(r, t.array, f)
     new Tensor(r)
   }
 
   def addi(t: Tensor, f: Float): Unit = {
-    TH.THFloatTensor_add(t.payload, t.payload, f)
+    TH.THFloatTensor_add(t.array, t.array, f)
   }
 
   def addi(a: Tensor, b: Tensor): Unit = {
-    TH.THFloatTensor_cadd(a.payload, a.payload, 1, b.payload)
+    TH.THFloatTensor_cadd(a.array, a.array, 1, b.array)
   }
 
   def subi(t: Tensor, f: Float): Unit = {
-    TH.THFloatTensor_sub(t.payload, t.payload, f)
+    TH.THFloatTensor_sub(t.array, t.array, f)
   }
 
   def equal(a: Tensor, b: Tensor): Boolean =
-    TH.THFloatTensor_equal(a.payload, b.payload) == 1
+    TH.THFloatTensor_equal(a.array, b.array) == 1
 
   /*
   one ops
    */
   def oneOp(f: (THFloatTensor, THFloatTensor) => Unit, a: Tensor): Tensor = {
     val r = TH.THFloatTensor_new()
-    f(r, a.payload)
+    f(r, a.array)
     new Tensor(r)
   }
 
@@ -310,7 +310,7 @@ package object numsca extends LazyLogging {
             b: Tensor): Tensor = {
     val r = TH.THFloatTensor_new()
     val Seq(ta, tb) = expandNd(Seq(a, b))
-    f(r, ta.payload, tb.payload)
+    f(r, ta.array, tb.array)
     new Tensor(r)
   }
 
@@ -329,18 +329,18 @@ package object numsca extends LazyLogging {
   def sum(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
     val r = TH.THFloatTensor_new()
     val nAxis = if (axis < 0) a.dim + axis else axis
-    TH.THFloatTensor_sum(r, a.payload, nAxis, if (keepDim) 1 else 0)
+    TH.THFloatTensor_sum(r, a.array, nAxis, if (keepDim) 1 else 0)
     new Tensor(r)
   }
 
-  def sum(a: Tensor): Double = TH.THFloatTensor_sumall(a.payload)
+  def sum(a: Tensor): Double = TH.THFloatTensor_sumall(a.array)
 
   def argmin(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
     val values = TH.THFloatTensor_new()
     val indices = TH.THLongTensor_new()
     TH.THFloatTensor_min(values,
       indices,
-      a.payload,
+      a.array,
       axis,
       if (keepDim) 1 else 0)
 
@@ -362,7 +362,7 @@ package object numsca extends LazyLogging {
     } else {
       val original = TH.new_CFloatTensorArray(as.length)
       as.indices.foreach { i =>
-        TH.CFloatTensorArray_setitem(original, i, as(i).payload)
+        TH.CFloatTensorArray_setitem(original, i, as(i).array)
       }
 
       val results = TH.new_CFloatTensorArray(as.length)
@@ -389,10 +389,10 @@ package object numsca extends LazyLogging {
     // transform to long
     val index =
       TH.THLongTensor_newWithSize(longStorage(ix.shape), longStorage(ix.stride))
-    TH.THLongTensor_copyFloat(index, ix.payload)
+    TH.THLongTensor_copyFloat(index, ix.array)
 
     val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_indexSelect(r, a.payload, dim, index)
+    TH.THFloatTensor_indexSelect(r, a.array, dim, index)
     val result = new Tensor(r)
 
     TH.THLongTensor_free(index)
@@ -406,7 +406,7 @@ package object numsca extends LazyLogging {
   }
 
   def ixSelect(a: Tensor, ixs: List[Int]): Tensor = {
-    val size = TH.THLongStorage_newWithData(a.payload.getSize, a.payload.getNDimension)
+    val size = TH.THLongStorage_newWithData(a.array.getSize, a.array.getNDimension)
     // val stride = TH.THLongStorage_newWithData(a.payload.getStride, a.payload.getNDimension)
     // val mask = TH.THByteTensor_newWithSize(size, stride)
     val mask = TH.THByteTensor_new
@@ -414,14 +414,14 @@ package object numsca extends LazyLogging {
     ixs.foreach(i => TH.THByteTensor_set1d(mask, i, 1))
 
     val t = TH.THFloatTensor_new
-    TH.THFloatTensor_maskedSelect(t, a.payload, mask)
+    TH.THFloatTensor_maskedSelect(t, a.array, mask)
 
     TH.THByteTensor_free(mask)
 
     new Tensor(t)
   }
 
-  def data(a: Tensor): Array[Float] = data(a.payload)
+  def data(a: Tensor): Array[Float] = data(a.array)
 
   def data(t: THFloatTensor): Array[Float] = {
     val p = TH.THFloatTensor_data(t)

@@ -116,10 +116,10 @@ class TensorSpec extends FlatSpec with Matchers {
 
   it should "reshape" in {
     val a = ns.arange(max = 9)
-    println(a.payload.getStorage.getRefcount)
+    println(a.array.getStorage.getRefcount)
     val b = a.reshape(List(3, 3))
-    println(a.payload.getStorage.getRefcount)
-    println(a.payload.getStorage.getRefcount)
+    println(a.array.getStorage.getRefcount)
+    println(a.array.getStorage.getRefcount)
 
     b(1, 1) := 999
 
@@ -413,7 +413,7 @@ class TensorSpec extends FlatSpec with Matchers {
     println(r(1))
     // r(1) := 0f
 
-    TH.THFloatTensor_set1d(r.payload, 1, 377f)
+    TH.THFloatTensor_set1d(r.array, 1, 377f)
 
     println(primes)
     println(r)
@@ -472,7 +472,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
 
     // public static void THNN_FloatLinear_updateOutput(SWIGTYPE_p_void state, THFloatTensor input, THFloatTensor output, THFloatTensor weight, THFloatTensor bias, THFloatTensor addBuffer) {
-    TH.THNN_FloatLinear_updateOutput(state, x.payload, y.payload, w.payload, b.payload, buffer.payload)
+    TH.THNN_FloatLinear_updateOutput(state, x.array, y.array, w.array, b.array, buffer.array)
 
     println(y)
     println

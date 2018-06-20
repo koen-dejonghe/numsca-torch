@@ -24,7 +24,7 @@ case class Variable(data: Tensor,
   override def toString: String =
     if (name.isDefined) s"name: ${name.get}, data: $data" else s"data: $data"
 
-  def payload: THFloatTensor = data.payload
+  def array: THFloatTensor = data.array
 
   lazy val grad: Variable =
     Variable(ns.zerosLike(data), name = name.map(n => s"g_$n"))

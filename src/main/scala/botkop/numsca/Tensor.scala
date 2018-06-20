@@ -6,17 +6,17 @@ import torch.cpu._
 
 import scala.language.{implicitConversions, postfixOps}
 
-class Tensor private[numsca] (val payload: THFloatTensor) extends LazyLogging {
+class Tensor private[numsca] (val array: THFloatTensor) extends LazyLogging {
 
-  def dim: Int = payload.getNDimension
+  def dim: Int = array.getNDimension
 
   def shape: List[Int] = {
-    val s = CInt64Array.frompointer(payload.getSize)
+    val s = CInt64Array.frompointer(array.getSize)
     (0 until dim).toList.map(i => s.getitem(i).toInt)
   }
 
   def stride: List[Int] = {
-    val s = CInt64Array.frompointer(payload.getStride)
+    val s = CInt64Array.frompointer(array.getStride)
     (0 until dim).toList.map(i => s.getitem(i).toInt)
   }
 
@@ -25,8 +25,8 @@ class Tensor private[numsca] (val payload: THFloatTensor) extends LazyLogging {
   def realSize: Int =
     shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
-  def desc: String = TH.THFloatTensor_desc(payload).getStr
-  def numel: Int = TH.THFloatTensor_numel(payload)
+  def desc: String = TH.THFloatTensor_desc(array).getStr
+  def numel: Int = TH.THFloatTensor_numel(array)
 
   override def toString: String =
     s"tensor of shape $shape and stride $stride ($realSize / $size)\n" + data.toList
@@ -40,7 +40,7 @@ class Tensor private[numsca] (val payload: THFloatTensor) extends LazyLogging {
 //    val memSize = MemoryManager.dec(size) // obtain size before freeing!
 //    logger.debug(s"freeing (mem = $memSize)")
     logger.debug(s"finalizing")
-    payload.delete()
+    array.delete()
   }
 
   def copy(): Tensor = ns.copy(this)
