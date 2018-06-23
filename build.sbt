@@ -15,4 +15,4 @@ libraryDependencies ++= Seq(
 )
 
 fork in Test := true
-javaOptions in Test ++= Seq("-Djava.library.path=/Users/koen/lib")
+javaOptions in Test ++= Seq("-Djava.library.path=/Users/koen/projects/ATen/target/lib")

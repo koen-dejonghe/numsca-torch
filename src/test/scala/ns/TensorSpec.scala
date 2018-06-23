@@ -1,6 +1,5 @@
-package botkop.numsca
+package ns
 
-import ns._
 import org.scalatest.{FlatSpec, Matchers}
 import torch.cpu.{SWIGTYPE_p_void, TH}
 
@@ -136,7 +135,6 @@ class TensorSpec extends FlatSpec with Matchers {
     val b = ns.select(a, dimension = 0, sliceIndex = 1)
     println(b.shape)
     println(b.data.toList)
-
   }
 
   it should "select 2" in {

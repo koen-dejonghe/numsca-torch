@@ -35,13 +35,20 @@ package object ns extends LazyLogging {
 
   /* === tensor creation ================================================================================= */
   def copy(a: Tensor): Tensor = {
-    val t = TH.THFloatTensor_newClone(a.array)
+    val t = TH.THFloatTensor_newClone(a)
+    new Tensor(t)
+  }
+
+  def view(a: Tensor, shape: Shape): Tensor = {
+    // todo test this
+    val t = copy(a)
+    TH.THFloatTensor_newView(t, longStorage(shape))
     new Tensor(t)
   }
 
   def empty = new Tensor(TH.THFloatTensor_new())
-  def array(data: Float*): Tensor = create(data: _*)
-  def tensor(data: Float*): Tensor = create(data: _*)
+  def array(data: Number*): Tensor = create(data: _*)
+  def tensor(data: Number*): Tensor = create(data: _*)
 
   def create(data: Array[Float], shape: List[Int]): Tensor = {
     require(data.length == shape.product)
@@ -54,8 +61,7 @@ package object ns extends LazyLogging {
   }
 
   def create(data: Array[Float]): Tensor = create(data, List(data.length))
-
-  def create(data: Float*): Tensor = create(data.toArray)
+  def create(data: Number*): Tensor = create(data.map(_.floatValue()).toArray)
 
   def zeros(shape: List[Int]): Tensor = {
     val ls = longStorage(shape)
@@ -75,11 +81,12 @@ package object ns extends LazyLogging {
   }
 
   def ones(shape: Int*): Tensor = ones(shape.toList)
+  def onesLike(other: Tensor): Tensor = ones(other.shape)
 
-  def fill(f: Float, shape: List[Int]): Tensor = {
+  def fill(f: Number, shape: List[Int]): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_newWithSize(ls, null)
-    TH.THFloatTensor_fill(t, f)
+    TH.THFloatTensor_fill(t, f.floatValue())
     new Tensor(t)
   }
 
@@ -113,39 +120,20 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def linspace(start: Float, end: Float, steps: Long): Tensor = {
+  def linspace(start: Number, end: Number, steps: Long): Tensor = {
     val t = TH.THFloatTensor_new
-    TH.THFloatTensor_linspace(t, start, end, steps)
+    TH.THFloatTensor_linspace(t, start.floatValue(), end.floatValue(), steps)
     new Tensor(t)
   }
 
-  // utility functions -----------------------------
-
-  def longStorage(shape: Seq[Int]): THLongStorage = {
-    val size = shape.length
-    val data = new CInt64Array(size)
-    var i = 0
-    while (i < shape.length) {
-      data.setitem(i, shape(i))
-      i = i + 1
-    }
-    TH.THLongStorage_newWithData(data.cast(), size)
-  }
-
-  def floatArray(data: Array[Float]): SWIGTYPE_p_float = {
-    val size = data.length
-    val a = new CFloatArray(size)
-    var i = 0
-    while (i < size) {
-      a.setitem(i, data(i))
-      i = i + 1
-    }
-    a.cast()
-  }
+  //=== tensor manip =====================================================
 
   def reshape(a: Tensor, newShape: List[Int]): Tensor = {
-    val t = TH.THFloatTensor_newWithStorage(a.array.getStorage,
-      a.array.getStorageOffset,
+
+    require(a.size == newShape.product)
+
+    val t = TH.THFloatTensor_newWithStorage(a.getStorage,
+      a.getStorageOffset,
       longStorage(newShape),
       null)
     //     this creates a new storage tensor
@@ -156,43 +144,40 @@ package object ns extends LazyLogging {
 
   def reshape(a: Tensor, newShape: Int*): Tensor = reshape(a, newShape.toList)
 
-  def setValue(a: Tensor, value: Float, index: List[Int]): Unit = {
+  def setValue(a: Tensor, n: Number, index: List[Int]): Unit = {
+    val value = n.floatValue()
     a.dim match {
       case 1 =>
-        TH.THFloatTensor_set1d(a.array, index.head, value)
+        TH.THFloatTensor_set1d(a, index.head, value)
       case 2 =>
-        TH.THFloatTensor_set2d(a.array, index.head, index(1), value)
+        TH.THFloatTensor_set2d(a, index.head, index(1), value)
       case 3 =>
-        TH.THFloatTensor_set3d(a.array, index.head, index(1), index(2), value)
+        TH.THFloatTensor_set3d(a, index.head, index(1), index(2), value)
       case 4 =>
-        TH.THFloatTensor_set4d(a.array,
-          index.head,
-          index(1),
-          index(2),
-          index(3),
-          value)
+        TH.THFloatTensor_set4d(a,
+                               index.head,
+                               index(1),
+                               index(2),
+                               index(3),
+                               value)
     }
   }
 
   def getValue(a: Tensor, index: List[Int]): Float = {
     a.dim match {
       case 1 =>
-        TH.THFloatTensor_get1d(a.array, index.head)
+        TH.THFloatTensor_get1d(a, index.head)
       case 2 =>
-        TH.THFloatTensor_get2d(a.array, index.head, index(1))
+        TH.THFloatTensor_get2d(a, index.head, index(1))
       case 3 =>
-        TH.THFloatTensor_get3d(a.array, index.head, index(1), index(2))
+        TH.THFloatTensor_get3d(a, index.head, index(1), index(2))
       case 4 =>
-        TH.THFloatTensor_get4d(a.array,
-          index.head,
-          index(1),
-          index(2),
-          index(3))
+        TH.THFloatTensor_get4d(a, index.head, index(1), index(2), index(3))
     }
   }
 
   def select(a: Tensor, dimension: Int, sliceIndex: Int): Tensor = {
-    val t = TH.THFloatTensor_newSelect(a.array, dimension, sliceIndex)
+    val t = TH.THFloatTensor_newSelect(a, dimension, sliceIndex)
     new Tensor(t)
   }
 
@@ -228,8 +213,8 @@ package object ns extends LazyLogging {
     new Tensor(s)
   }
 
-  def assign(a: Tensor, f: Float): Tensor = {
-    TH.THFloatTensor_fill(a.array, f)
+  def assign(a: Tensor, f: Number): Tensor = {
+    TH.THFloatTensor_fill(a, f.floatValue())
     a
   }
 
@@ -240,107 +225,96 @@ package object ns extends LazyLogging {
         src.array
       } else { // broadcast
         logger.debug("broadcasting")
-        TH.THFloatTensor_newExpand(src.array, longStorage(a.shape))
+        TH.THFloatTensor_newExpand(src, longStorage(a.shape))
       }
-    TH.THFloatTensor_copy(a.array, t)
+    TH.THFloatTensor_copy(a, t)
   }
 
   def squeeze(a: Tensor): Tensor = {
     val s = TH.THFloatTensor_new()
-    TH.THFloatTensor_squeeze(s, a.array)
+    TH.THFloatTensor_squeeze(s, a)
     new Tensor(s)
   }
 
-  def narrow(a: Tensor,
-             dimension: Int,
-             firstIndex: Int,
-             size: Int): Tensor = {
-    val t = TH.THFloatTensor_newNarrow(a.array, dimension, firstIndex, size)
+  def narrow(a: Tensor, dimension: Int, firstIndex: Int, size: Int): Tensor = {
+    val t = TH.THFloatTensor_newNarrow(a, dimension, firstIndex, size)
     new Tensor(t)
   }
 
   def linear(x: Tensor, y: Tensor, b: Tensor): Tensor = {
     val t = TH.THFloatTensor_new()
-    TH.THFloatTensor_addmm(t, 1.0f, b.array, 1.0f, x.array, y.array)
+    TH.THFloatTensor_addmm(t, 1.0f, b, 1.0f, x, y)
     new Tensor(t)
   }
 
-  def mul(t: Tensor, f: Float): Tensor = {
-    val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_mul(r, t.array, f)
-    new Tensor(r)
-  }
 
-  def addi(t: Tensor, f: Float): Unit = {
-    TH.THFloatTensor_add(t.array, t.array, f)
-  }
+  def add(t: Tensor, f: Number): Tensor =
+    numberOp(TH.THFloatTensor_add, t, f)
+  def add(a: Tensor, b: Tensor): Tensor =
+    binOp((r, t, u) => TH.THFloatTensor_cadd(r, t, 1, u), a, b)
+  def addi(t: Tensor, f: Number): Unit =
+    TH.THFloatTensor_add(t, t, f.floatValue)
+  def addi(a: Tensor, b: Tensor): Unit =
+    TH.THFloatTensor_cadd(a, a, 1, b)
 
-  def addi(a: Tensor, b: Tensor): Unit = {
-    TH.THFloatTensor_cadd(a.array, a.array, 1, b.array)
-  }
+  def sub(t: Tensor, f: Number): Tensor =
+    numberOp(TH.THFloatTensor_sub, t, f)
+  def sub(a: Tensor, b: Tensor): Tensor =
+    binOp((r, t, u) => TH.THFloatTensor_csub(r, t, 1, u), a, b)
+  def subi(t: Tensor, f: Number): Unit =
+    TH.THFloatTensor_sub(t, t, f.floatValue)
+  def subi(a: Tensor, b: Tensor): Unit =
+    TH.THFloatTensor_csub(a, a, 1, b)
 
-  def subi(t: Tensor, f: Float): Unit = {
-    TH.THFloatTensor_sub(t.array, t.array, f)
-  }
+  def mul(t: Tensor, f: Number): Tensor =
+    numberOp(TH.THFloatTensor_mul, t, f)
+  def mul(t1: Tensor, t2: Tensor): Tensor =
+    binOp(TH.THFloatTensor_cmul, t1, t2)
+  def muli(t: Tensor, f: Number): Unit =
+    TH.THFloatTensor_mul(t, t, f.floatValue)
+  def muli(a: Tensor, b: Tensor): Unit =
+    TH.THFloatTensor_cmul(a, a, b)
+
+  def div(t: Tensor, f: Number): Tensor =
+    numberOp(TH.THFloatTensor_div, t, f)
+  def div(t1: Tensor, t2: Tensor): Tensor =
+    binOp(TH.THFloatTensor_cdiv, t1, t2)
+  def divi(t: Tensor, f: Number): Unit =
+    TH.THFloatTensor_div(t, t, f.floatValue)
+  def divi(a: Tensor, b: Tensor): Unit =
+    TH.THFloatTensor_cdiv(a, a, b)
+
+  def pow(t: Tensor, f: Number): Tensor =
+    numberOp(TH.THFloatTensor_pow, t, f)
+  def pow(t1: Tensor, t2: Tensor): Tensor =
+    binOp(TH.THFloatTensor_cpow, t1, t2)
+  def powi(t: Tensor, f: Number): Unit =
+    TH.THFloatTensor_pow(t, t, f.floatValue)
+  def powi(a: Tensor, b: Tensor): Unit =
+    TH.THFloatTensor_cpow(a, a, b)
 
   def equal(a: Tensor, b: Tensor): Boolean =
-    TH.THFloatTensor_equal(a.array, b.array) == 1
-
-  /*
-  one ops
-   */
-  def oneOp(f: (THFloatTensor, THFloatTensor) => Unit, a: Tensor): Tensor = {
-    val r = TH.THFloatTensor_new()
-    f(r, a.array)
-    new Tensor(r)
-  }
+    TH.THFloatTensor_equal(a, b) == 1
 
   def neg(a: Tensor): Tensor = oneOp(TH.THFloatTensor_neg, a)
   def sqrt(a: Tensor): Tensor = oneOp(TH.THFloatTensor_sqrt, a)
   def square(a: Tensor): Tensor =
     oneOp((r, t) => TH.THFloatTensor_pow(r, t, 2), a)
 
-  /*
-  bin ops
-   */
-  def binOp(f: (THFloatTensor, THFloatTensor, THFloatTensor) => Unit,
-            a: Tensor,
-            b: Tensor): Tensor = {
-    val r = TH.THFloatTensor_new()
-    val Seq(ta, tb) = expandNd(Seq(a, b))
-    f(r, ta.array, tb.array)
-    new Tensor(r)
-  }
-
-  def mul(t1: Tensor, t2: Tensor): Tensor =
-    binOp(TH.THFloatTensor_cmul, t1, t2)
-
-  def sub(a: Tensor, b: Tensor): Tensor = {
-    binOp((r, t, u) => TH.THFloatTensor_csub(r, t, 1, u), a, b)
-  }
-
-  def add(a: Tensor, b: Tensor): Tensor = {
-    binOp((r, t, u) => TH.THFloatTensor_cadd(r, t, 1, u), a, b)
-  }
-
   //==================================================
   def sum(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
     val r = TH.THFloatTensor_new()
     val nAxis = if (axis < 0) a.dim + axis else axis
-    TH.THFloatTensor_sum(r, a.array, nAxis, if (keepDim) 1 else 0)
+    TH.THFloatTensor_sum(r, a, nAxis, if (keepDim) 1 else 0)
     new Tensor(r)
   }
 
-  def sum(a: Tensor): Double = TH.THFloatTensor_sumall(a.array)
+  def sum(a: Tensor): Double = TH.THFloatTensor_sumall(a)
 
   def argmin(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
     val values = TH.THFloatTensor_new()
     val indices = TH.THLongTensor_new()
-    TH.THFloatTensor_min(values,
-      indices,
-      a.array,
-      axis,
-      if (keepDim) 1 else 0)
+    TH.THFloatTensor_min(values, indices, a, axis, if (keepDim) 1 else 0)
 
     val indexSize =
       TH.THLongStorage_newWithData(indices.getSize, indices.getNDimension)
@@ -360,7 +334,7 @@ package object ns extends LazyLogging {
     } else {
       val original = TH.new_CFloatTensorArray(as.length)
       as.indices.foreach { i =>
-        TH.CFloatTensorArray_setitem(original, i, as(i).array)
+        TH.CFloatTensorArray_setitem(original, i, as(i))
       }
 
       val results = TH.new_CFloatTensorArray(as.length)
@@ -387,32 +361,32 @@ package object ns extends LazyLogging {
     // transform to long
     val index =
       TH.THLongTensor_newWithSize(longStorage(ix.shape), longStorage(ix.stride))
-    TH.THLongTensor_copyFloat(index, ix.array)
+    TH.THLongTensor_copyFloat(index, ix)
 
     val r = TH.THFloatTensor_new()
-    TH.THFloatTensor_indexSelect(r, a.array, dim, index)
+    TH.THFloatTensor_indexSelect(r, a, dim, index)
     val result = new Tensor(r)
 
     TH.THLongTensor_free(index)
     result
   }
 
-  def indexSelect(a: Tensor, ixs: Seq[Tensor]): Tensor = ixs.indices.foldLeft(a) {
-    case (acc, i) =>
-      val r = indexSelect(acc, 0, ixs(i))
-      r
-  }
+  def indexSelect(a: Tensor, ixs: Seq[Tensor]): Tensor =
+    ixs.indices.foldLeft(a) {
+      case (acc, i) =>
+        val r = indexSelect(acc, 0, ixs(i))
+        r
+    }
 
   def ixSelect(a: Tensor, ixs: List[Int]): Tensor = {
-    val size = TH.THLongStorage_newWithData(a.array.getSize, a.array.getNDimension)
-    // val stride = TH.THLongStorage_newWithData(a.payload.getStride, a.payload.getNDimension)
-    // val mask = TH.THByteTensor_newWithSize(size, stride)
+    val size =
+      TH.THLongStorage_newWithData(a.getSize, a.getNDimension)
     val mask = TH.THByteTensor_new
     TH.THByteTensor_zeros(mask, size)
     ixs.foreach(i => TH.THByteTensor_set1d(mask, i, 1))
 
     val t = TH.THFloatTensor_new
-    TH.THFloatTensor_maskedSelect(t, a.array, mask)
+    TH.THFloatTensor_maskedSelect(t, a, mask)
 
     TH.THByteTensor_free(mask)
 
@@ -425,6 +399,59 @@ package object ns extends LazyLogging {
     val p = TH.THFloatTensor_data(t)
     val pa = CFloatArray.frompointer(p)
     (0 until TH.THFloatTensor_numel(t)).map(pa.getitem).toArray
+  }
+
+  // utility functions -----------------------------
+
+  def longStorage(shape: Seq[Int]): THLongStorage = {
+    val size = shape.length
+    val data = new CInt64Array(size)
+    var i = 0
+    while (i < shape.length) {
+      data.setitem(i, shape(i))
+      i = i + 1
+    }
+    TH.THLongStorage_newWithData(data.cast(), size)
+  }
+
+  def floatArray(data: Array[Float]): SWIGTYPE_p_float = {
+    val size = data.length
+    val a = new CFloatArray(size)
+    var i = 0
+    while (i < size) {
+      a.setitem(i, data(i))
+      i = i + 1
+    }
+    a.cast()
+  }
+
+  /*
+  one ops
+   */
+  def oneOp(f: (THFloatTensor, THFloatTensor) => Unit, a: Tensor): Tensor = {
+    val r = TH.THFloatTensor_new()
+    f(r, a)
+    new Tensor(r)
+  }
+
+  /*
+  bin ops
+   */
+  def binOp(f: (THFloatTensor, THFloatTensor, THFloatTensor) => Unit,
+            a: Tensor,
+            b: Tensor): Tensor = {
+    val r = TH.THFloatTensor_new()
+    val Seq(ta, tb) = expandNd(Seq(a, b))
+    f(r, ta, tb)
+    new Tensor(r)
+  }
+
+  def numberOp(f: (THFloatTensor, THFloatTensor, Float) => Unit,
+               t: Tensor,
+               n: Number): Tensor = {
+    val r = TH.THFloatTensor_new()
+    f(r, t, n.floatValue())
+    new Tensor(r)
   }
 
 }

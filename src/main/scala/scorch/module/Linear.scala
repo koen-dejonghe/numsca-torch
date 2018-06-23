@@ -15,6 +15,14 @@ case class Linear(weights: Variable, bias: Variable)
 
 object Linear {
 
+  def apply(inFeatures: Int, outFeatures: Int): Linear = {
+    val w: Tensor = ns.ones(outFeatures, inFeatures) * math.sqrt(2.0 / outFeatures)
+    val weights = Variable(w)
+    val b: Tensor = ns.zeros(outFeatures)
+    val bias = Variable(b)
+    Linear(weights, bias)
+  }
+
   case class LinearFunction(x: Variable, weights: Variable, bias: Variable)
       extends Function {
 
@@ -22,34 +30,26 @@ object Linear {
     val buffer: Tensor = ns.empty
 
     override def forward(): Variable = {
-      TH.THNN_FloatLinear_updateOutput(null,
-                                       x.array,
-                                       out.array,
-                                       weights.array,
-                                       bias.array,
-                                       buffer.array)
+      TH.THNN_FloatLinear_updateOutput(null, x, out, weights, bias, buffer)
       Variable(out, Some(this))
     }
 
     override def backward(gradOutput: Variable): Unit = {
 
-      TH.THNN_FloatLinear_updateGradInput(null,
-                                          x.array,
-                                          gradOutput.array,
-                                          x.grad.array,
-                                          weights.array)
+      TH.THNN_FloatLinear_updateGradInput(null, x, gradOutput, x.grad, weights)
 
       TH.THNN_FloatLinear_accGradParameters(null,
-                                            x.array,
-                                            gradOutput.array,
-                                            x.grad.array,
-                                            weights.array,
-                                            bias.array,
-                                            weights.grad.array,
-                                            bias.grad.array,
-                                            buffer.array,
-                                            1.0)
-    }
+                                            x,
+                                            gradOutput,
+                                            x.grad,
+                                            weights,
+                                            bias,
+                                            weights.grad,
+                                            bias.grad,
+                                            buffer,
+                                            1)
 
+      x.backward(x.grad)
+    }
   }
 }

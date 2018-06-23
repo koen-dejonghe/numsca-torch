@@ -58,25 +58,47 @@ class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
 
   def isSameAs(a: Tensor): Boolean = ns.equal(this, a)
 
-  def :=(f: Float): Unit = ns.assign(this, f)
+  def :=(f: Number): Unit = ns.assign(this, f)
   def :=(a: Tensor): Unit = ns.assign(this, a)
 
-  def +=(f: Float): Unit = ns.addi(this, f)
+  def +=(f: Number): Unit = ns.addi(this, f)
   def +=(a: Tensor): Unit = ns.addi(this, a)
 
-  def -=(f: Float): Unit = ns.subi(this, f)
-  // def -=(a: Tensor): Unit = numsca.subi(this, a)
+  def -=(f: Number): Unit = ns.subi(this, f)
+  def -=(a: Tensor): Unit = ns.subi(this, a)
 
-  def *(f: Float): Tensor = ns.mul(this, f)
+  def *=(f: Number): Unit = ns.muli(this, f)
+  def *=(a: Tensor): Unit = ns.muli(this, a)
 
-  def -(a: Tensor): Tensor = ns.sub(this, a)
+  def /=(f: Number): Unit = ns.divi(this, f)
+  def /=(a: Tensor): Unit = ns.divi(this, a)
+
+  def **=(f: Number): Unit = ns.powi(this, f)
+  def **=(a: Tensor): Unit = ns.powi(this, a)
+
+  def +(f: Number): Tensor = ns.add(this, f)
   def +(a: Tensor): Tensor = ns.add(this, a)
+
+  def -(f: Number): Tensor = ns.sub(this, f)
+  def -(a: Tensor): Tensor = ns.sub(this, a)
+
+  def *(f: Number): Tensor = ns.mul(this, f)
+  def *(a: Tensor): Tensor = ns.mul(this, a)
+
+  def /(f: Number): Tensor = ns.div(this, f)
+  def /(a: Tensor): Tensor = ns.div(this, a)
+
+  def **(f: Number): Tensor = ns.pow(this, f)
+  def **(a: Tensor): Tensor = ns.pow(this, a)
+
   def unary_- : Tensor = ns.neg(this)
 }
 
 object Tensor extends LazyLogging {
 
   def apply(data: Array[Float]): Tensor = ns.create(data)
-  def apply(data: Float*): Tensor = Tensor(data.toArray)
+  def apply(data: Number*): Tensor = Tensor(data.map(_.floatValue()).toArray)
+
+  implicit def toRawTensor(t: Tensor): THFloatTensor = t.array
 
 }
