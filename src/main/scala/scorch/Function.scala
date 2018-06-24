@@ -36,5 +36,5 @@ object Function {
                    sizeAverage: Boolean = true,
                    ignoreIndex: Int = -100,
                    reduce: Boolean = true): Variable =
-    nll(logSoftMax(x), y, weights, sizeAverage, ignoreIndex, reduce)
+    nll(logSoftMax(x, Some(1)), y, weights, sizeAverage, ignoreIndex, reduce)
 }

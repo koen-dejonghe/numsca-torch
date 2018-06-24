@@ -428,6 +428,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
   }
 
+  /*
   it should "list-of-location index" in {
     val numSamples = 4
     val numClasses = 3
@@ -438,6 +439,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
     println(z)
   }
+  */
 
   it should "ix select" in {
     val primes = ns.tensor(2, 3, 5, 7, 11, 13, 17, 19, 23)

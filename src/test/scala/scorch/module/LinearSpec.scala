@@ -4,6 +4,7 @@ import ns.Tensor
 import org.scalatest.{FlatSpec, Matchers}
 import scorch.{Module, Variable}
 import scorch.Function._
+import scorch.optimizer.SGD
 
 class LinearSpec extends FlatSpec with Matchers {
 
@@ -91,6 +92,7 @@ class LinearSpec extends FlatSpec with Matchers {
 
   it should "1 pass of a simple nn" in {
 
+    ns.setSeed(231)
     case class Net() extends Module {
       val fc1 = Linear(25, 100)
       val fc2 = Linear(100, 10)
@@ -101,13 +103,47 @@ class LinearSpec extends FlatSpec with Matchers {
     val net = Net()
 
     val input = Variable(ns.randn(16, 25))
-    val target = Variable(ns.randint(0, 10, List(16, 1)))
+    val target = Variable(ns.randint(0, 10, List(16)))
 
     val output = net(input)
+    val loss = crossEntropy(output, target)
+    loss.backward()
+    // println(net.fc1.weights.grad)
+  }
 
-    println(output)
+  it should "multiple passes of nn" in {
 
-    val loss = mseLoss(output, target)
+    val numSamples = 160
+    val numFeatures = 250
+    val numClasses = 10
+
+    ns.setSeed(231)
+    case class Net() extends Module {
+      val fc1 = Linear(numFeatures, 100)
+      val fc2 = Linear(100, numClasses)
+      override def forward(x: Variable): Variable =
+        x ~> fc1 ~> relu ~> fc2
+    }
+
+    val net = Net()
+
+    val input = Variable(ns.randn(numSamples, numFeatures))
+    val target = Variable(ns.randint(0, numClasses, List(numSamples)))
+
+    val optimizer = SGD(net.parameters, 0.08)
+
+    for (i <- 1 to 20) {
+      net.zeroGrad()
+      val output = net(input)
+
+      val guessed = ns.argmax(output.data, axis = 1)
+      val accuracy = ns.sum(target.data == guessed) / numSamples
+
+      val loss = crossEntropy(output, target)
+      loss.backward()
+      println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
+      optimizer.step()
+    }
 
   }
 

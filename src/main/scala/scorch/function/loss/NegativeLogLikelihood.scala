@@ -28,6 +28,8 @@ case class NegativeLogLikelihood(input: Variable,
   )
    */
 
+  val totalWeight: Tensor = ns.empty
+
   override def forward(): Variable = {
     val output = ns.empty
 
@@ -37,8 +39,8 @@ case class NegativeLogLikelihood(input: Variable,
       targetAsLong,
       output,
       sizeAverage,
-      weights.orNull,
-      null,
+      weights.map(_.array).orNull,
+      totalWeight,
       ignoreIndex,
       reduce
     )
@@ -69,8 +71,8 @@ case class NegativeLogLikelihood(input: Variable,
       gradOutput,
       input.grad,
       sizeAverage,
-      weights.orNull,
-      null,
+      weights.map(_.array).orNull,
+      totalWeight,
       ignoreIndex,
       reduce
     )

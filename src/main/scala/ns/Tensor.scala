@@ -5,7 +5,8 @@ import torch.cpu._
 
 import scala.language.{implicitConversions, postfixOps}
 
-class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
+class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
+    extends LazyLogging {
 
   def dim: Int = array.getNDimension
   def shape: List[Int] = ns.shape(array)
@@ -27,8 +28,6 @@ class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
 
   override def finalize(): Unit = {
 //    val memSize = MemoryManager.dec(size) // obtain size before freeing!
-//    logger.debug(s"freeing (mem = $memSize)")
-    logger.debug(s"finalizing")
     array.delete()
   }
 
@@ -44,7 +43,7 @@ class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
   def apply(i: Int*): Tensor = ns.narrow(this, i.toList)
   def apply(rs: NumscaRange*)(implicit z: Int = 0): Tensor =
     ns.narrow(this, NumscaRangeSeq(rs))
-  def select(ixs: Tensor*): Tensor = ns.indexSelect(this, ixs.toSeq)
+  // def select(ixs: Tensor*): Tensor = ns.indexSelect(this, ixs.toSeq)
 
   def isSameAs(a: Tensor): Boolean = ns.equal(this, a)
 
@@ -80,6 +79,13 @@ class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
 
   def **(f: Number): Tensor = ns.pow(this, f)
   def **(a: Tensor): Tensor = ns.pow(this, a)
+
+  def ==(a: Tensor): Tensor = ns.eq(this, a)
+  def !=(a: Tensor): Tensor = ns.ne(this, a)
+  def >(a: Tensor): Tensor = ns.gt(this, a)
+  def <(a: Tensor): Tensor = ns.lt(this, a)
+  def >=(a: Tensor): Tensor = ns.ge(this, a)
+  def <=(a: Tensor): Tensor = ns.le(this, a)
 
   def unary_- : Tensor = ns.neg(this)
 }

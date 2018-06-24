@@ -16,7 +16,7 @@ case class Linear(weights: Variable, bias: Variable)
 object Linear {
 
   def apply(inFeatures: Int, outFeatures: Int): Linear = {
-    val w: Tensor = ns.ones(outFeatures, inFeatures) * math.sqrt(2.0 / outFeatures)
+    val w: Tensor = ns.randn(outFeatures, inFeatures) * math.sqrt(2.0 / outFeatures)
     val weights = Variable(w)
     val b: Tensor = ns.zeros(outFeatures)
     val bias = Variable(b)
