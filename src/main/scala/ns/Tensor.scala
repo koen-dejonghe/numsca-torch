@@ -16,6 +16,10 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def realSize: Int =
     shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
+  private val sz = size
+
+  MemoryManager.inc(sz)
+
   def desc: String = TH.THFloatTensor_desc(array).getStr
 
   override def toString: String =
@@ -27,8 +31,9 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def value(ix: Int*): Float = ns.getValue(this, ix.toList)
 
   override def finalize(): Unit = {
-//    val memSize = MemoryManager.dec(size) // obtain size before freeing!
-    array.delete()
+    MemoryManager.dec(sz)
+    TH.THFloatTensor_free(array)
+    // array.delete()
   }
 
   def copy(): Tensor = ns.copy(this)

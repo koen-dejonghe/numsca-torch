@@ -1,5 +1,6 @@
 package ns
 
+import java.util.TimerTask
 import java.util.concurrent.atomic.AtomicLong
 
 import com.typesafe.scalalogging.LazyLogging
@@ -22,11 +23,28 @@ object MemoryManager extends LazyLogging {
 
   def memCheck(size: Long): Unit = {
     val level = inc(size)
-    if (level > Threshold) {
-      logger.debug(s"invoking gc ($level/$Threshold)")
-      System.gc()
-    }
+//    if (level > Threshold) {
+//       logger.debug(s"invoking gc ($level/$Threshold)")
+//      System.gc()
+//    }
   }
 
   def memCheck(shape: List[Int]): Unit = memCheck(shape.product)
+
+  val t = new java.util.Timer()
+  val task: TimerTask = new java.util.TimerTask {
+    def run(): Unit = {
+
+      logger.debug("running")
+
+      val level = hiMemMark.longValue()
+      if (level > Threshold) {
+        logger.debug(s"invoking gc ($level/$Threshold)")
+        System.gc()
+      }
+
+    }
+  }
+  t.schedule(task, 5000L, 5000L)
+  // task.cancel()
 }

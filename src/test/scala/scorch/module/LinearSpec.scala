@@ -113,8 +113,8 @@ class LinearSpec extends FlatSpec with Matchers {
 
   it should "multiple passes of nn" in {
 
-    val numSamples = 160
-    val numFeatures = 250
+    val numSamples = 1600
+    val numFeatures = 2500
     val numClasses = 10
 
     ns.setSeed(231)
@@ -132,7 +132,7 @@ class LinearSpec extends FlatSpec with Matchers {
 
     val optimizer = SGD(net.parameters, 0.08)
 
-    for (i <- 1 to 20) {
+    for (i <- 1 to 10000) {
       net.zeroGrad()
       val output = net(input)
 

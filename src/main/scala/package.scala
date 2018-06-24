@@ -45,7 +45,8 @@ package object ns extends LazyLogging {
   def view(a: Tensor, shape: Shape): Tensor = {
     // todo test this
     val t = copy(a)
-    TH.THFloatTensor_newView(t, longStorage(shape))
+    val ls = longStorage(shape)
+    TH.THFloatTensor_newView(t, ls)
     new Tensor(t)
   }
 
@@ -70,6 +71,7 @@ package object ns extends LazyLogging {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_zeros(t, ls)
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -80,6 +82,7 @@ package object ns extends LazyLogging {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_ones(t, ls)
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -90,6 +93,7 @@ package object ns extends LazyLogging {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_newWithSize(ls, null)
     TH.THFloatTensor_fill(t, f.floatValue())
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -103,6 +107,7 @@ package object ns extends LazyLogging {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_randn(t, rng, ls)
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -113,6 +118,7 @@ package object ns extends LazyLogging {
     val t = TH.THFloatTensor_newWithSize(ls, null)
     TH.THFloatTensor_uniform(t, rng, low, high)
     TH.THFloatTensor_floor(t, t)
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -120,6 +126,7 @@ package object ns extends LazyLogging {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_newWithSize(ls, null)
     TH.THFloatTensor_uniform(t, rng, low, high)
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -135,13 +142,16 @@ package object ns extends LazyLogging {
 
     require(a.size == newShape.product)
 
+    val ls = longStorage(newShape)
+
     val t = TH.THFloatTensor_newWithStorage(a.getStorage,
                                             a.getStorageOffset,
-                                            longStorage(newShape),
+                                            ls,
                                             null)
     //     this creates a new storage tensor
     //    val t = TH.THFloatTensor_new()
     //    TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
+//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
@@ -210,7 +220,7 @@ package object ns extends LazyLogging {
 
         val size = to - i.f
         TH.THFloatTensor_newNarrow(t, d, i.f, size)
-        // todo probably need to free 't' before returning
+      // todo probably need to free 't' before returning
     }
 
     val s = TH.THFloatTensor_new()
@@ -230,7 +240,10 @@ package object ns extends LazyLogging {
         src.array
       } else { // broadcast
         logger.debug("broadcasting")
-        TH.THFloatTensor_newExpand(src, longStorage(a.shape))
+        val ls = longStorage(a.shape)
+        val ex = TH.THFloatTensor_newExpand(src, ls)
+//        TH.THLongStorage_free(ls)
+        ex
       }
     TH.THFloatTensor_copy(a, t)
   }
