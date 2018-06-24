@@ -8,24 +8,14 @@ import scala.language.{implicitConversions, postfixOps}
 class Tensor private[ns](val array: THFloatTensor) extends LazyLogging {
 
   def dim: Int = array.getNDimension
-
-  def shape: List[Int] = {
-    val s = CInt64Array.frompointer(array.getSize)
-    (0 until dim).toList.map(i => s.getitem(i).toInt)
-  }
-
-  def stride: List[Int] = {
-    val s = CInt64Array.frompointer(array.getStride)
-    (0 until dim).toList.map(i => s.getitem(i).toInt)
-  }
-
-  // val size: Int = shape.product
+  def shape: List[Int] = ns.shape(array)
+  def stride: List[Int] = ns.stride(array)
+  def numel: Int = TH.THFloatTensor_numel(array)
   def size: Int = numel
   def realSize: Int =
     shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
   def desc: String = TH.THFloatTensor_desc(array).getStr
-  def numel: Int = TH.THFloatTensor_numel(array)
 
   override def toString: String =
     s"tensor of shape $shape and stride $stride ($realSize / $size)\n" + data.toList

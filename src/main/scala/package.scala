@@ -133,9 +133,9 @@ package object ns extends LazyLogging {
     require(a.size == newShape.product)
 
     val t = TH.THFloatTensor_newWithStorage(a.getStorage,
-      a.getStorageOffset,
-      longStorage(newShape),
-      null)
+                                            a.getStorageOffset,
+                                            longStorage(newShape),
+                                            null)
     //     this creates a new storage tensor
     //    val t = TH.THFloatTensor_new()
     //    TH.THFloatTensor_reshape(t, a.payload, longStorage(newShape))
@@ -246,7 +246,6 @@ package object ns extends LazyLogging {
     TH.THFloatTensor_addmm(t, 1.0f, b, 1.0f, x, y)
     new Tensor(t)
   }
-
 
   def add(t: Tensor, f: Number): Tensor =
     numberOp(TH.THFloatTensor_add, t, f)
@@ -423,6 +422,23 @@ package object ns extends LazyLogging {
       i = i + 1
     }
     a.cast()
+  }
+
+  def floatTensorToLongTensor(t: THFloatTensor): THLongTensor = {
+    val lt =
+      TH.THLongTensor_newWithSize(longStorage(shape(t)), longStorage(stride(t)))
+    TH.THLongTensor_copyFloat(lt, t)
+    lt
+  }
+
+  def shape(array: THFloatTensor): List[Int] =
+    shapify(array.getSize, array.getNDimension)
+  def stride(array: THFloatTensor): List[Int] =
+    shapify(array.getStride, array.getNDimension)
+
+  def shapify(p: SWIGTYPE_p_long_long, dim: Int): List[Int] = {
+    val s: CInt64Array = CInt64Array.frompointer(p)
+    (0 until dim).toList.map(i => s.getitem(i).toInt)
   }
 
   /*
