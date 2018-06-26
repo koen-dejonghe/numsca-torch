@@ -1,9 +1,10 @@
 package scorch.function
 
+import ns.Region
 import scorch.{Function, Variable}
 import torch.cpu.TH
 
-case class LeakyRelu(x: Variable, negVal: Double = 0.0) extends Function {
+case class LeakyRelu(x: Variable, negVal: Double = 0.0)(implicit r: Region) extends Function {
 
   /*
   THNN_FloatLeakyReLU_updateOutput(SWIGTYPE_p_void state,

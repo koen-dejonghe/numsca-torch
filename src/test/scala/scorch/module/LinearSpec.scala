@@ -1,44 +1,46 @@
 package scorch.module
 
-import ns.Tensor
+import com.typesafe.scalalogging.LazyLogging
+import ns.{Region, Tensor}
 import org.scalatest.{FlatSpec, Matchers}
-import scorch.{Module, Variable}
+import scorch.{Module, Optimizer, Variable}
 import scorch.Function._
 import scorch.optimizer.SGD
 
-class LinearSpec extends FlatSpec with Matchers {
+class LinearSpec extends FlatSpec with Matchers with LazyLogging {
 
   "Linear" should "forward/backward" in {
 
-    val x = ns.arange(max = 12).reshape(4, 3)
-    val w = ns.arange(max = 15).reshape(5, 3)
-    val b = ns.arange(max = 5)
+    Region.run { implicit r =>
+      val x = ns.arange(max = 12).reshape(4, 3)
+      val w = ns.arange(max = 15).reshape(5, 3)
+      val b = ns.arange(max = 5)
 
-    val weights = Variable(w, name = Some("weights"))
-    val bias = Variable(b, name = Some("bias"))
-    val input = Variable(x)
+      val weights = Variable(w, name = Some("weights"))
+      val bias = Variable(b, name = Some("bias"))
+      val input = Variable(x)
 
-    val l = Linear(weights, bias)
+      val l = Linear(weights, bias)
 
-    val output: Variable = l.forward(input)
+      val output: Variable = l.forward(input)
 
-    println(output)
+      println(output)
 
-    val dy = Variable(ns.arange(max = 20).reshape(4, 5))
+      val dy = Variable(ns.arange(max = 20).reshape(4, 5))
 
-    output.backward(dy)
+      output.backward(dy)
 
-    println(weights.grad)
-    println(bias.grad)
+      println(weights.grad)
+      println(bias.grad)
 
-    weights.grad.data isSameAs Tensor(210, 240, 270, 228, 262, 296, 246, 284,
-      322, 264, 306, 348, 282, 328, 374).reshape(5, 3) shouldBe true
+      weights.grad.data isSameAs Tensor(210, 240, 270, 228, 262, 296, 246, 284,
+        322, 264, 306, 348, 282, 328, 374).reshape(5, 3) shouldBe true
 
-    bias.grad.data isSameAs Tensor(30, 34, 38, 42, 46) shouldBe true
+      bias.grad.data isSameAs Tensor(30, 34, 38, 42, 46) shouldBe true
+    }
   }
 
-  it should "handle 2 layers" in {
-
+  it should "handle 2 layers" in Region.run { implicit r =>
     val x = Variable(ns.arange(max = 12).reshape(4, 3), name = Some("x"))
 
     val w1 = Variable(ns.arange(max = 15).reshape(5, 3), name = Some("w1"))
@@ -90,8 +92,7 @@ class LinearSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "1 pass of a simple nn" in {
-
+  it should "1 pass of a simple nn" in Region.run { implicit r =>
     ns.setSeed(231)
     case class Net() extends Module {
       val fc1 = Linear(25, 100)
@@ -108,31 +109,65 @@ class LinearSpec extends FlatSpec with Matchers {
     val output = net(input)
     val loss = crossEntropy(output, target)
     loss.backward()
-    // println(net.fc1.weights.grad)
+  // println(net.fc1.weights.grad)
   }
 
   it should "multiple passes of nn" in {
+    Region.run { implicit r =>
+      val numSamples = 1600
+      val numFeatures = 2500
+      val numClasses = 10
 
-    val numSamples = 1600
-    val numFeatures = 2500
-    val numClasses = 10
+      ns.setSeed(231)
+      case class Net() extends Module {
+//        val fc1 = Linear(numFeatures, 100)
+//        val fc2 = Linear(100, numClasses)
+        val f = Linear(numFeatures, numClasses)
+        override def forward(x: Variable): Variable =
+          // x ~> fc1 ~> relu ~> fc2
+          x ~> f
+      }
 
-    ns.setSeed(231)
-    case class Net() extends Module {
-      val fc1 = Linear(numFeatures, 100)
-      val fc2 = Linear(100, numClasses)
-      override def forward(x: Variable): Variable =
-        x ~> fc1 ~> relu ~> fc2
+      val net = Net()
+
+      val input = Variable(ns.randn(numSamples, numFeatures))
+      val target = Variable(ns.randint(0, numClasses, List(numSamples)))
+
+      val optimizer = SGD(net.parameters, 0.08)
+
+      logger.debug("=========== stepping ===")
+
+      for (i <- 1 to 3) {
+        // step(i, net, input, target, optimizer, numSamples)
+        Region.run { implicit r =>
+          logger.debug("=========== zero grad ===")
+          net.zeroGrad()
+
+          logger.debug("=========== forward ===")
+          val output = net(input)
+
+          logger.debug("=========== eval ===")
+          val guessed = ns.argmax(output.data, axis = 1)
+          val accuracy = ns.sum(target.data == guessed) / numSamples
+
+          logger.debug("=========== loss ===")
+          val loss = crossEntropy(output, target)
+          logger.debug("=========== back prop ===")
+          loss.backward()
+          logger.debug("=========== optim ===")
+          println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
+          optimizer.step()
+        }
+        logger.debug("=========== exit region ===")
+      }
     }
 
-    val net = Net()
-
-    val input = Variable(ns.randn(numSamples, numFeatures))
-    val target = Variable(ns.randint(0, numClasses, List(numSamples)))
-
-    val optimizer = SGD(net.parameters, 0.08)
-
-    for (i <- 1 to 10000) {
+    def step(i: Int,
+             net: Module,
+             input: Variable,
+             target: Variable,
+             optimizer: Optimizer,
+             numSamples: Int) = Region.run { implicit r =>
       net.zeroGrad()
       val output = net(input)
 
@@ -140,11 +175,14 @@ class LinearSpec extends FlatSpec with Matchers {
       val accuracy = ns.sum(target.data == guessed) / numSamples
 
       val loss = crossEntropy(output, target)
-      loss.backward()
       println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
+
+      guessed.array.getStorage.delete()
+      guessed.array.delete()
+
+      loss.backward()
       optimizer.step()
     }
-
   }
 
 }

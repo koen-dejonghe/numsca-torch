@@ -1,10 +1,10 @@
 package scorch.module
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import scorch._
 import torch.cpu.TH
 
-case class Linear(weights: Variable, bias: Variable)
+case class Linear(weights: Variable, bias: Variable)(implicit r: Region)
     extends Module(Seq(weights, bias)) {
 
   import Linear._
@@ -15,15 +15,16 @@ case class Linear(weights: Variable, bias: Variable)
 
 object Linear {
 
-  def apply(inFeatures: Int, outFeatures: Int): Linear = {
-    val w: Tensor = ns.randn(outFeatures, inFeatures) * math.sqrt(2.0 / outFeatures)
+  def apply(inFeatures: Int, outFeatures: Int)(implicit r: Region): Linear = {
+    val w: Tensor = ns.randn(outFeatures, inFeatures) * math.sqrt(
+      2.0 / outFeatures)
     val weights = Variable(w)
     val b: Tensor = ns.zeros(outFeatures)
     val bias = Variable(b)
     Linear(weights, bias)
   }
 
-  case class LinearFunction(x: Variable, weights: Variable, bias: Variable)
+  case class LinearFunction(x: Variable, weights: Variable, bias: Variable)(implicit r: Region)
       extends Function {
 
     val out: Tensor = ns.empty

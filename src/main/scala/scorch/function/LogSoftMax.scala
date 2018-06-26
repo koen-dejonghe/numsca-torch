@@ -1,11 +1,12 @@
 package scorch.function
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import scorch.Variable
 import scorch.Function
 import torch.cpu.TH
 
-case class LogSoftMax(input: Variable, dim: Option[Long] = None)
+case class LogSoftMax(input: Variable, dim: Option[Long] = None)(
+    implicit r: Region)
     extends Function {
 
   // see torch.nn.functional.py

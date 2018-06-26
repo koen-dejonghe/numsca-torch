@@ -1,13 +1,13 @@
 package scorch.function.loss
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import scorch.{Function, Variable}
 import torch.cpu.TH
 
 case class MeanSquaredError(x: Variable,
                             y: Variable,
                             sizeAverage: Boolean = true,
-                            reduce: Boolean = true)
+                            reduce: Boolean = true)(implicit r: Region)
     extends Function {
 
   override def forward(): Variable = {

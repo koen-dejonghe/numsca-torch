@@ -31,9 +31,15 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def value(ix: Int*): Float = ns.getValue(this, ix.toList)
 
   override def finalize(): Unit = {
-    MemoryManager.dec(sz)
-    TH.THFloatTensor_free(array)
+//    MemoryManager.dec(sz)
+//    TH.THFloatTensor_free(array)
     // array.delete()
+  }
+
+  def dispose(): Unit = {
+    MemoryManager.dec(sz)
+    // logger.debug("disposing")
+    TH.THFloatTensor_free(array)
   }
 
   def copy(): Tensor = ns.copy(this)
