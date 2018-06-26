@@ -17,7 +17,6 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
     shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
   private val sz = size
-
   MemoryManager.inc(sz)
 
   def desc: String = TH.THFloatTensor_desc(array).getStr
@@ -33,7 +32,6 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   override def finalize(): Unit = {
     MemoryManager.dec(sz)
     TH.THFloatTensor_free(array)
-    // array.delete()
   }
 
   def copy(): Tensor = ns.copy(this)

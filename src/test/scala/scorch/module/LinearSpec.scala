@@ -141,7 +141,7 @@ class LinearSpec extends FlatSpec with Matchers {
 
       val loss = crossEntropy(output, target)
       loss.backward()
-      println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
+      // println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
       optimizer.step()
     }
 
