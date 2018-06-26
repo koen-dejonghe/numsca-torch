@@ -1,6 +1,6 @@
 package scorch.module
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import org.scalatest.{FlatSpec, Matchers}
 import scorch.{Module, Variable}
 import scorch.Function._
@@ -8,7 +8,7 @@ import scorch.optimizer.SGD
 
 class LinearSpec extends FlatSpec with Matchers {
 
-  "Linear" should "forward/backward" in {
+  "Linear" should "forward/backward" in Region.run { implicit region =>
 
     val x = ns.arange(max = 12).reshape(4, 3)
     val w = ns.arange(max = 15).reshape(5, 3)
@@ -37,7 +37,7 @@ class LinearSpec extends FlatSpec with Matchers {
     bias.grad.data isSameAs Tensor(30, 34, 38, 42, 46) shouldBe true
   }
 
-  it should "handle 2 layers" in {
+  it should "handle 2 layers" in Region.run { implicit region =>
 
     val x = Variable(ns.arange(max = 12).reshape(4, 3), name = Some("x"))
 
@@ -90,13 +90,13 @@ class LinearSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "1 pass of a simple nn" in {
+  it should "1 pass of a simple nn" in Region.run { implicit region =>
 
     ns.setSeed(231)
     case class Net() extends Module {
       val fc1 = Linear(25, 100)
       val fc2 = Linear(100, 10)
-      override def forward(x: Variable): Variable =
+      override def forward(x: Variable)(implicit region: Region): Variable =
         x ~> fc1 ~> relu ~> fc2
     }
 
@@ -111,7 +111,7 @@ class LinearSpec extends FlatSpec with Matchers {
     // println(net.fc1.weights.grad)
   }
 
-  it should "multiple passes of nn" in {
+  it should "multiple passes of nn" in Region.run { implicit region =>
 
     val numSamples = 1600
     val numFeatures = 2500
@@ -121,7 +121,8 @@ class LinearSpec extends FlatSpec with Matchers {
     case class Net() extends Module {
       val fc1 = Linear(numFeatures, 100)
       val fc2 = Linear(100, numClasses)
-      override def forward(x: Variable): Variable =
+
+      override def forward(x: Variable)(implicit region: Region): Variable =
         x ~> fc1 ~> relu ~> fc2
     }
 
@@ -132,12 +133,13 @@ class LinearSpec extends FlatSpec with Matchers {
 
     val optimizer = SGD(net.parameters, 0.08)
 
-    for (i <- 1 to 10000) {
-      net.zeroGrad()
+    for (i <- 1 to 10) Region.run { implicit region =>
+      // net.zeroGrad()
       val output = net(input)
 
       val guessed = ns.argmax(output.data, axis = 1)
-      val accuracy = ns.sum(target.data == guessed) / numSamples
+      val b = guessed == target.data
+      val accuracy = ns.sum(b) / numSamples
 
       val loss = crossEntropy(output, target)
       loss.backward()

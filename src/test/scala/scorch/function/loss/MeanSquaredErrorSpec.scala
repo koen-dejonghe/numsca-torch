@@ -1,11 +1,12 @@
 package scorch.function.loss
 
+import ns.Region
 import org.scalatest.{FlatSpec, Matchers}
 import scorch.Variable
 import torch.cpu.TH
 
 class MeanSquaredErrorSpec extends FlatSpec with Matchers {
-  "MSE" should "compute" in {
+  "MSE" should "compute" in Region.run { implicit region =>
 
     val x = Variable(ns.arange(min = 5, max = 13).reshape(4, 2))
 

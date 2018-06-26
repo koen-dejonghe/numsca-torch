@@ -1,17 +1,17 @@
 package scorch
 
 import com.typesafe.scalalogging.LazyLogging
-import ns.Tensor
+import ns.{Region, Tensor}
 import torch.cpu.THFloatTensor
 
 import scala.language.implicitConversions
 
 object Variable {
-  def apply(d: Double): Variable = Variable(Tensor(d.toFloat))
-  def apply(d: Double, name: Option[String]): Variable =
+  def apply(d: Double)(implicit region: Region): Variable = Variable(Tensor(d.toFloat))
+  def apply(d: Double, name: Option[String])(implicit region: Region): Variable =
     Variable(Tensor(d.toFloat), name = name)
 
-  implicit def moduleApply[T <: Module](m: T): (Variable) => Variable =
+  implicit def moduleApply[T <: Module](m: T)(implicit region: Region): (Variable) => Variable =
     m.forward
 
   implicit def toRawTensor(v: Variable): THFloatTensor = v.array
@@ -20,7 +20,7 @@ object Variable {
 
 case class Variable(data: Tensor,
                     gradFn: Option[Function] = None,
-                    name: Option[String] = None)
+                    name: Option[String] = None)(implicit region: Region)
   extends LazyLogging {
 
   override def toString: String =

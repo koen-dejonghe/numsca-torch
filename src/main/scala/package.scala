@@ -37,12 +37,12 @@ package object ns extends LazyLogging {
     TH.THRandom_manualSeed(rng, BigInteger.valueOf(theSeed))
 
   /* === tensor creation ================================================================================= */
-  def copy(a: Tensor): Tensor = {
+  def copy(a: Tensor)(implicit r: Region): Tensor = {
     val t = TH.THFloatTensor_newClone(a)
     new Tensor(t)
   }
 
-  def view(a: Tensor, shape: Shape): Tensor = {
+  def view(a: Tensor, shape: Shape)(implicit r: Region): Tensor = {
     // todo test this
     val t = copy(a)
     val ls = longStorage(shape)
@@ -50,11 +50,12 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def empty = new Tensor(TH.THFloatTensor_new())
-  def array(data: Number*): Tensor = create(data: _*)
-  def tensor(data: Number*): Tensor = create(data: _*)
+  def empty(implicit r: Region) = new Tensor(TH.THFloatTensor_new())
+  def array(data: Number*)(implicit r: Region): Tensor = create(data: _*)
+  def tensor(data: Number*)(implicit r: Region): Tensor = create(data: _*)
 
-  def create(data: Array[Float], shape: List[Int]): Tensor = {
+  def create(data: Array[Float], shape: List[Int])(
+      implicit r: Region): Tensor = {
     require(data.length == shape.product)
     val size = data.length
     val a = floatArray(data)
@@ -64,21 +65,22 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def create(data: Array[Float]): Tensor = create(data, List(data.length))
-  def create(data: Number*): Tensor = create(data.map(_.floatValue()).toArray)
+  def create(data: Array[Float])(implicit r: Region): Tensor =
+    create(data, List(data.length))
+  def create(data: Number*)(implicit r: Region): Tensor =
+    create(data.map(_.floatValue()).toArray)
 
-  def zeros(shape: List[Int]): Tensor = {
+  def zeros(shape: List[Int])(implicit r: Region): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_zeros(t, ls)
-//    TH.THLongStorage_free(ls)
     new Tensor(t)
   }
 
-  def zeros(shape: Int*): Tensor = zeros(shape.toList)
-  def zerosLike(other: Tensor): Tensor = zeros(other.shape)
+  def zeros(shape: Int*)(implicit r: Region): Tensor = zeros(shape.toList)
+  def zerosLike(other: Tensor)(implicit r: Region): Tensor = zeros(other.shape)
 
-  def ones(shape: List[Int]): Tensor = {
+  def ones(shape: List[Int])(implicit r: Region): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_ones(t, ls)
@@ -86,10 +88,10 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def ones(shape: Int*): Tensor = ones(shape.toList)
-  def onesLike(other: Tensor): Tensor = ones(other.shape)
+  def ones(shape: Int*)(implicit r: Region): Tensor = ones(shape.toList)
+  def onesLike(other: Tensor)(implicit r: Region): Tensor = ones(other.shape)
 
-  def fill(f: Number, shape: List[Int]): Tensor = {
+  def fill(f: Number, shape: List[Int])(implicit r: Region): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_newWithSize(ls, null)
     TH.THFloatTensor_fill(t, f.floatValue())
@@ -97,13 +99,14 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def arange(min: Double = 0, max: Double, step: Double = 1): Tensor = {
+  def arange(min: Double = 0, max: Double, step: Double = 1)(
+      implicit r: Region): Tensor = {
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_arange(t, min, max, step)
     new Tensor(t)
   }
 
-  def randn(shape: List[Int]): Tensor = {
+  def randn(shape: List[Int])(implicit r: Region): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_randn(t, rng, ls)
@@ -111,9 +114,10 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def randn(shape: Int*): Tensor = randn(shape.toList)
+  def randn(shape: Int*)(implicit r: Region): Tensor = randn(shape.toList)
 
-  def randint(low: Double = 0.0, high: Double, shape: List[Int]): Tensor = {
+  def randint(low: Double = 0.0, high: Double, shape: List[Int])(
+      implicit r: Region): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_newWithSize(ls, null)
     TH.THFloatTensor_uniform(t, rng, low, high)
@@ -122,7 +126,8 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def uniform(low: Double = 0.0, high: Double, shape: List[Int]): Tensor = {
+  def uniform(low: Double = 0.0, high: Double, shape: List[Int])(
+      implicit r: Region): Tensor = {
     val ls = longStorage(shape)
     val t = TH.THFloatTensor_newWithSize(ls, null)
     TH.THFloatTensor_uniform(t, rng, low, high)
@@ -130,7 +135,8 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def linspace(start: Number, end: Number, steps: Long): Tensor = {
+  def linspace(start: Number, end: Number, steps: Long)(
+      implicit r: Region): Tensor = {
     val t = TH.THFloatTensor_new
     TH.THFloatTensor_linspace(t, start.floatValue(), end.floatValue(), steps)
     new Tensor(t)
@@ -138,7 +144,7 @@ package object ns extends LazyLogging {
 
   //=== tensor manip =====================================================
 
-  def reshape(a: Tensor, newShape: List[Int]): Tensor = {
+  def reshape(a: Tensor, newShape: List[Int])(implicit r: Region): Tensor = {
 
     require(a.size == newShape.product)
 
@@ -155,7 +161,8 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def reshape(a: Tensor, newShape: Int*): Tensor = reshape(a, newShape.toList)
+  def reshape(a: Tensor, newShape: Int*)(implicit r: Region): Tensor =
+    reshape(a, newShape.toList)
 
   def setValue(a: Tensor, n: Number, index: List[Int]): Unit = {
     val value = n.floatValue()
@@ -189,12 +196,13 @@ package object ns extends LazyLogging {
     }
   }
 
-  def select(a: Tensor, dimension: Int, sliceIndex: Int): Tensor = {
+  def select(a: Tensor, dimension: Int, sliceIndex: Int)(
+      implicit r: Region): Tensor = {
     val t = TH.THFloatTensor_newSelect(a, dimension, sliceIndex)
     new Tensor(t)
   }
 
-  def narrow(a: Tensor, where: List[Int]): Tensor = {
+  def narrow(a: Tensor, where: List[Int])(implicit region: Region): Tensor = {
     val r = where.zipWithIndex.foldLeft(a.array) {
       case (t, (i, d)) =>
         // todo probably need to free 't' before returning
@@ -206,7 +214,8 @@ package object ns extends LazyLogging {
     new Tensor(s)
   }
 
-  def narrow(a: Tensor, ranges: NumscaRangeSeq): Tensor = {
+  def narrow(a: Tensor, ranges: NumscaRangeSeq)(
+      implicit region: Region): Tensor = {
     val r = ranges.rs.zipWithIndex.foldLeft(a.array) {
       case (t, (i, d)) =>
         val to = i.t match {
@@ -248,62 +257,64 @@ package object ns extends LazyLogging {
     TH.THFloatTensor_copy(a, t)
   }
 
-  def squeeze(a: Tensor): Tensor = {
+  def squeeze(a: Tensor)(implicit region: Region): Tensor = {
     val s = TH.THFloatTensor_new()
     TH.THFloatTensor_squeeze(s, a)
     new Tensor(s)
   }
 
-  def narrow(a: Tensor, dimension: Int, firstIndex: Int, size: Int): Tensor = {
+  def narrow(a: Tensor, dimension: Int, firstIndex: Int, size: Int)(
+      implicit region: Region): Tensor = {
     val t = TH.THFloatTensor_newNarrow(a, dimension, firstIndex, size)
     new Tensor(t)
   }
 
-  def linear(x: Tensor, y: Tensor, b: Tensor): Tensor = {
+  def linear(x: Tensor, y: Tensor, b: Tensor)(
+      implicit region: Region): Tensor = {
     val t = TH.THFloatTensor_new()
     TH.THFloatTensor_addmm(t, 1.0f, b, 1.0f, x, y)
     new Tensor(t)
   }
 
-  def add(t: Tensor, f: Number): Tensor =
+  def add(t: Tensor, f: Number)(implicit region: Region): Tensor =
     numberOp(TH.THFloatTensor_add, t, f)
-  def add(a: Tensor, b: Tensor): Tensor =
+  def add(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     binOp((r, t, u) => TH.THFloatTensor_cadd(r, t, 1, u), a, b)
   def addi(t: Tensor, f: Number): Unit =
     TH.THFloatTensor_add(t, t, f.floatValue)
   def addi(a: Tensor, b: Tensor): Unit =
     TH.THFloatTensor_cadd(a, a, 1, b)
 
-  def sub(t: Tensor, f: Number): Tensor =
+  def sub(t: Tensor, f: Number)(implicit region: Region): Tensor =
     numberOp(TH.THFloatTensor_sub, t, f)
-  def sub(a: Tensor, b: Tensor): Tensor =
+  def sub(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     binOp((r, t, u) => TH.THFloatTensor_csub(r, t, 1, u), a, b)
   def subi(t: Tensor, f: Number): Unit =
     TH.THFloatTensor_sub(t, t, f.floatValue)
   def subi(a: Tensor, b: Tensor): Unit =
     TH.THFloatTensor_csub(a, a, 1, b)
 
-  def mul(t: Tensor, f: Number): Tensor =
+  def mul(t: Tensor, f: Number)(implicit region: Region): Tensor =
     numberOp(TH.THFloatTensor_mul, t, f)
-  def mul(t1: Tensor, t2: Tensor): Tensor =
+  def mul(t1: Tensor, t2: Tensor)(implicit region: Region): Tensor =
     binOp(TH.THFloatTensor_cmul, t1, t2)
   def muli(t: Tensor, f: Number): Unit =
     TH.THFloatTensor_mul(t, t, f.floatValue)
   def muli(a: Tensor, b: Tensor): Unit =
     TH.THFloatTensor_cmul(a, a, b)
 
-  def div(t: Tensor, f: Number): Tensor =
+  def div(t: Tensor, f: Number)(implicit region: Region): Tensor =
     numberOp(TH.THFloatTensor_div, t, f)
-  def div(t1: Tensor, t2: Tensor): Tensor =
+  def div(t1: Tensor, t2: Tensor)(implicit region: Region): Tensor =
     binOp(TH.THFloatTensor_cdiv, t1, t2)
   def divi(t: Tensor, f: Number): Unit =
     TH.THFloatTensor_div(t, t, f.floatValue)
   def divi(a: Tensor, b: Tensor): Unit =
     TH.THFloatTensor_cdiv(a, a, b)
 
-  def pow(t: Tensor, f: Number): Tensor =
+  def pow(t: Tensor, f: Number)(implicit region: Region): Tensor =
     numberOp(TH.THFloatTensor_pow, t, f)
-  def pow(t1: Tensor, t2: Tensor): Tensor =
+  def pow(t1: Tensor, t2: Tensor)(implicit region: Region): Tensor =
     binOp(TH.THFloatTensor_cpow, t1, t2)
   def powi(t: Tensor, f: Number): Unit =
     TH.THFloatTensor_pow(t, t, f.floatValue)
@@ -313,26 +324,29 @@ package object ns extends LazyLogging {
   def equal(a: Tensor, b: Tensor): Boolean =
     TH.THFloatTensor_equal(a, b) == 1
 
-  def eq(a: Tensor, b: Tensor): Tensor =
+  def eq(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     booleanBinOp(TH.THFloatTensor_eqTensor, a, b)
-  def ne(a: Tensor, b: Tensor): Tensor =
+  def ne(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     booleanBinOp(TH.THFloatTensor_neTensor, a, b)
-  def gt(a: Tensor, b: Tensor): Tensor =
+  def gt(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     booleanBinOp(TH.THFloatTensor_gtTensor, a, b)
-  def lt(a: Tensor, b: Tensor): Tensor =
+  def lt(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     booleanBinOp(TH.THFloatTensor_ltTensor, a, b)
-  def ge(a: Tensor, b: Tensor): Tensor =
+  def ge(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     booleanBinOp(TH.THFloatTensor_geTensor, a, b)
-  def le(a: Tensor, b: Tensor): Tensor =
+  def le(a: Tensor, b: Tensor)(implicit region: Region): Tensor =
     booleanBinOp(TH.THFloatTensor_leTensor, a, b)
 
-  def neg(a: Tensor): Tensor = oneOp(TH.THFloatTensor_neg, a)
-  def sqrt(a: Tensor): Tensor = oneOp(TH.THFloatTensor_sqrt, a)
-  def square(a: Tensor): Tensor =
+  def neg(a: Tensor)(implicit region: Region): Tensor =
+    oneOp(TH.THFloatTensor_neg, a)
+  def sqrt(a: Tensor)(implicit region: Region): Tensor =
+    oneOp(TH.THFloatTensor_sqrt, a)
+  def square(a: Tensor)(implicit region: Region): Tensor =
     oneOp((r, t) => TH.THFloatTensor_pow(r, t, 2), a)
 
   //==================================================
-  def sum(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
+  def sum(a: Tensor, axis: Int, keepDim: Boolean = true)(
+      implicit region: Region): Tensor = {
     val r = TH.THFloatTensor_new()
     val nAxis = if (axis < 0) a.dim + axis else axis
     TH.THFloatTensor_sum(r, a, nAxis, if (keepDim) 1 else 0)
@@ -341,7 +355,8 @@ package object ns extends LazyLogging {
 
   def sum(a: Tensor): Double = TH.THFloatTensor_sumall(a)
 
-  def argmin(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
+  def argmin(a: Tensor, axis: Int, keepDim: Boolean = true)(
+      implicit region: Region): Tensor = {
     val values = TH.THFloatTensor_new()
     val indices = TH.THLongTensor_new()
     TH.THFloatTensor_min(values, indices, a, axis, if (keepDim) 1 else 0)
@@ -351,7 +366,8 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def argmax(a: Tensor, axis: Int, keepDim: Boolean = true): Tensor = {
+  def argmax(a: Tensor, axis: Int, keepDim: Boolean = true)(
+      implicit region: Region): Tensor = {
     val values = TH.THFloatTensor_new()
     val indices = TH.THLongTensor_new()
     TH.THFloatTensor_max(values, indices, a, axis, if (keepDim) 1 else 0)
@@ -361,7 +377,7 @@ package object ns extends LazyLogging {
     new Tensor(t)
   }
 
-  def expandNd(ts: Seq[Tensor]): Seq[Tensor] =
+  def expandNd(ts: Seq[Tensor])(implicit region: Region): Seq[Tensor] =
     if (ts.tail.forall(_.shape == ts.head.shape)) {
       ts
     } else {
@@ -388,7 +404,8 @@ package object ns extends LazyLogging {
       resized
     }
 
-  def indexSelect(a: Tensor, dim: Int, ix: Tensor): Tensor = {
+  def indexSelect(a: Tensor, dim: Int, ix: Tensor)(
+      implicit region: Region): Tensor = {
     // public static void THFloatTensor_indexSelect(THFloatTensor tensor, THFloatTensor src, int dim, THLongTensor index)
 
     // transform to long
@@ -402,14 +419,15 @@ package object ns extends LazyLogging {
     result
   }
 
-  def indexSelect(a: Tensor, ixs: Seq[Tensor]): Tensor =
+  def indexSelect(a: Tensor, ixs: Seq[Tensor])(
+      implicit region: Region): Tensor =
     ixs.indices.foldLeft(a) {
       case (acc, i) =>
         val r = indexSelect(acc, 0, ixs(i))
         r
     }
 
-  def ixSelect(a: Tensor, ixs: List[Int]): Tensor = {
+  def ixSelect(a: Tensor, ixs: List[Int])(implicit region: Region): Tensor = {
     val size =
       TH.THLongStorage_newWithData(a.getSize, a.getNDimension)
     val mask = TH.THByteTensor_new
@@ -505,7 +523,8 @@ package object ns extends LazyLogging {
   /*
   one ops
    */
-  def oneOp(f: (THFloatTensor, THFloatTensor) => Unit, a: Tensor): Tensor = {
+  def oneOp(f: (THFloatTensor, THFloatTensor) => Unit, a: Tensor)(
+      implicit region: Region): Tensor = {
     val r = TH.THFloatTensor_new()
     f(r, a)
     new Tensor(r)
@@ -516,7 +535,7 @@ package object ns extends LazyLogging {
    */
   def binOp(f: (THFloatTensor, THFloatTensor, THFloatTensor) => Unit,
             a: Tensor,
-            b: Tensor): Tensor = {
+            b: Tensor)(implicit region: Region): Tensor = {
     val r = TH.THFloatTensor_new()
     val Seq(ta, tb) = expandNd(Seq(a, b))
     f(r, ta, tb)
@@ -525,7 +544,7 @@ package object ns extends LazyLogging {
 
   def numberOp(f: (THFloatTensor, THFloatTensor, Float) => Unit,
                t: Tensor,
-               n: Number): Tensor = {
+               n: Number)(implicit region: Region): Tensor = {
     val r = TH.THFloatTensor_new()
     f(r, t, n.floatValue())
     new Tensor(r)
@@ -533,7 +552,7 @@ package object ns extends LazyLogging {
 
   def booleanBinOp(f: (THByteTensor, THFloatTensor, THFloatTensor) => Unit,
                    a: Tensor,
-                   b: Tensor): Tensor = {
+                   b: Tensor)(implicit region: Region): Tensor = {
     val bt = TH.THByteTensor_new()
     f(bt, a, b)
     val r = byteTensorToFloatTensor(bt)

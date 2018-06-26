@@ -1,5 +1,6 @@
 package scorch.function
 
+import ns.Region
 import scorch.{Function, Variable}
 import torch.cpu.TH
 
@@ -13,7 +14,7 @@ case class LeakyRelu(x: Variable, negVal: Double = 0.0) extends Function {
                                    boolean inplace)
    */
 
-  override def forward(): Variable = {
+  override def forward()(implicit region: Region): Variable = {
     val out = ns.empty
     TH.THNN_FloatLeakyReLU_updateOutput(null, x, out, negVal, false)
     Variable(out, Some(this))

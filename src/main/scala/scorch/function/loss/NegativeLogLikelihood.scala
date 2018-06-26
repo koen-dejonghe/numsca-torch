@@ -1,6 +1,6 @@
 package scorch.function.loss
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import scorch.{Function, Variable}
 import torch.cpu.{TH, THLongTensor}
 
@@ -9,7 +9,7 @@ case class NegativeLogLikelihood(input: Variable,
                                  weights: Option[Tensor] = None,
                                  sizeAverage: Boolean = true,
                                  ignoreIndex: Int = -100,
-                                 reduce: Boolean = true)
+                                 reduce: Boolean = true)(implicit region: Region)
     extends Function {
 
   val targetAsLong: THLongTensor = ns.floatTensorToLongTensor(target)
@@ -30,7 +30,7 @@ case class NegativeLogLikelihood(input: Variable,
 
   val totalWeight: Tensor = ns.empty
 
-  override def forward(): Variable = {
+  override def forward()(implicit region: Region): Variable = {
     val output = ns.empty
 
     TH.THNN_FloatClassNLLCriterion_updateOutput(

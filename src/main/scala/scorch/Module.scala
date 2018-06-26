@@ -1,6 +1,7 @@
 package scorch
 
 import com.typesafe.scalalogging.LazyLogging
+import ns.Region
 
 abstract class BaseModule(localParameters: Seq[Variable] = Nil) {
 
@@ -47,6 +48,6 @@ abstract class BaseModule(localParameters: Seq[Variable] = Nil) {
 abstract class Module(localParameters: Seq[Variable] = Nil)
     extends BaseModule(localParameters)
     with LazyLogging {
-  def forward(x: Variable): Variable
-  def apply(x: Variable): Variable = forward(x)
+  def forward(x: Variable)(implicit region: Region): Variable
+  def apply(x: Variable)(implicit region: Region): Variable = forward(x)
 }

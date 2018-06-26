@@ -7,7 +7,7 @@ import scala.language.postfixOps
 
 class TensorSpec extends FlatSpec with Matchers {
 
-  "A tensor" should "create with provided data" in {
+  "A tensor" should "create with provided data" in Region.run { implicit region =>
 
     val data = (1 until 7).toArray.map(_.toFloat)
     val shape = List(2, 3)
@@ -19,7 +19,7 @@ class TensorSpec extends FlatSpec with Matchers {
     a.data shouldBe Array(1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
   }
 
-  it should "make a zero array" in {
+  it should "make a zero array" in Region.run { implicit region =>
     val shape = List(2, 3)
     val z = ns.zeros(shape)
     z.shape shouldBe List(2, 3)
@@ -58,7 +58,7 @@ class TensorSpec extends FlatSpec with Matchers {
   }
   */
 
-  it should "arange" in {
+  it should "arange" in Region.run { implicit region =>
     val t = ns.arange(max = 10.0)
     t.shape shouldBe List(10)
     t.data shouldBe Array(0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0)
@@ -68,14 +68,14 @@ class TensorSpec extends FlatSpec with Matchers {
     u.data shouldBe Array(0.0, 2.5, 5.0, 7.5)
   }
 
-  it should "seed" in {
+  it should "seed" in Region.run { implicit region =>
     ns.setSeed(213L)
     val t = ns.randn(2, 3)
     println(t.data.toList)
     // hard to test
   }
 
-  it should "randn" in {
+  it should "randn" in Region.run { implicit region =>
     ns.setSeed(213L)
     val t = ns.randn(1000)
     t.shape shouldBe List(1000)
@@ -89,14 +89,14 @@ class TensorSpec extends FlatSpec with Matchers {
     std should be(1.0 +- 1e-1)
   }
 
-  it should "randint" in {
+  it should "randint" in Region.run { implicit region =>
     ns.setSeed(213L)
     val t = ns.randint(high = 10.0, shape = List(10))
     val data = t.data
     println(data.toList)
   }
 
-  it should "linspace" in {
+  it should "linspace" in Region.run { implicit region =>
     val steps = 5
     val t = ns.linspace(0, 1, steps)
     t.shape shouldBe List(steps)
@@ -105,7 +105,7 @@ class TensorSpec extends FlatSpec with Matchers {
   }
 
   //--------------------
-  it should "cmul" in {
+  it should "cmul" in Region.run { implicit region =>
     val t1 = ns.arange(1, 10)
     val t2 = ns.arange(2, 11)
     val t3 = ns.mul(t2, t1)
@@ -113,7 +113,7 @@ class TensorSpec extends FlatSpec with Matchers {
     println(t3.data.toList)
   }
 
-  it should "reshape" in {
+  it should "reshape" in Region.run { implicit region =>
     val a = ns.arange(max = 9)
     println(a.array.getStorage.getRefcount)
     val b = a.reshape(List(3, 3))
@@ -130,14 +130,14 @@ class TensorSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "select" in {
+  it should "select" in Region.run { implicit region =>
     val a = ns.arange(max = 9).reshape(3, 3)
     val b = ns.select(a, dimension = 0, sliceIndex = 1)
     println(b.shape)
     println(b.data.toList)
   }
 
-  it should "select 2" in {
+  it should "select 2" in Region.run { implicit region =>
     val a = ns.arange(max = 8).reshape(2, 2, 2)
     // val r = NDArray.select(a, List(0, 1, 0))
     val r = a(0, 1, 0)
@@ -146,7 +146,7 @@ class TensorSpec extends FlatSpec with Matchers {
     println(r.data.toList)
   }
 
-  it should "assign to a selection" in {
+  it should "assign to a selection" in Region.run { implicit region =>
     val a = ns.arange(max = 8).reshape(2, 2, 2)
     val r = ns.randn(1)
     a(0, 1, 0) := r
@@ -162,7 +162,7 @@ class TensorSpec extends FlatSpec with Matchers {
     println(a.data.toList)
   }
 
-  it should "narrow" in {
+  it should "narrow" in Region.run { implicit region =>
     val a = ns.arange(max = 8).reshape(2, 2, 2)
     val b = ns.narrow(a, dimension = 0, firstIndex = 1, size = 1)
     ns.setValue(b, 3.17f, List(0, 0, 0))
@@ -171,7 +171,7 @@ class TensorSpec extends FlatSpec with Matchers {
     println(a.data.toList)
   }
 
-  it should "linear" in {
+  it should "linear" in Region.run { implicit region =>
     val x = ns.randint(1, 5, List(2, 3))
     val y = ns.randint(1, 5, List(3, 4))
     val b = ns.randint(1, 5, List(2, 4))
@@ -186,12 +186,12 @@ class TensorSpec extends FlatSpec with Matchers {
   //============================
   // numsca tests
 
-  val ta: Tensor = ns.arange(max = 10)
-  val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
-  val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
-
   // Elements
-  it should "retrieve the correct elements" in {
+  it should "retrieve the correct elements" in Region.run { implicit region =>
+    val ta: Tensor = ns.arange(max = 10)
+    val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+    val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
+
     assert(ta(1).squeeze().data.head == 1)
     assert(tb(1, 0).squeeze().data.head == 3)
     assert(tc(1, 0, 2).squeeze().data.head == 14)
@@ -200,7 +200,11 @@ class TensorSpec extends FlatSpec with Matchers {
     assert(tc(i: _*).squeeze().data.head == 13)
   }
 
-  it should "change array values in place" in {
+  it should "change array values in place" in Region.run { implicit region =>
+    val ta: Tensor = ns.arange(max = 10)
+    val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+    val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
+
     val t = ta.copy()
     t(3) := -5f
     assert(t.data sameElements Array(0, 1, 2, -5, 4, 5, 6, 7, 8, 9))
@@ -222,12 +226,20 @@ class TensorSpec extends FlatSpec with Matchers {
       t2.data.toList == List(0.0, 1.0, 2.0, 3.0, 4.0, -3.0, 6.0, -7.0, 8.0))
   }
 
-  it should "do operations array-wise" in {
+  it should "do operations array-wise" in Region.run { implicit region =>
+    val ta: Tensor = ns.arange(max = 10)
+    val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+    val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
+
     val a2 = ta * 2
     assert(a2.data sameElements Array(0, 2, 4, 6, 8, 10, 12, 14, 16, 18))
   }
 
-  it should "slice over a single dimension" in {
+  it should "slice over a single dimension" in Region.run { implicit region =>
+    val ta: Tensor = ns.arange(max = 10)
+    val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+    val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
+
 
     val a0 = ns.arange(max = 10)
 
@@ -253,7 +265,11 @@ class TensorSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "update over a single dimension" in {
+  it should "update over a single dimension" in Region.run { implicit region =>
+    val ta: Tensor = ns.arange(max = 10)
+    val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+    val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
+
 
     val t = ns.arange(max = 10)
     t(2 :> 5) := -ns.ones(3)
@@ -275,18 +291,22 @@ class TensorSpec extends FlatSpec with Matchers {
     t isSameAs ns.fill(-1, List(10)) shouldBe true
   }
 
-  it should "slice over multiple dimensions" in {
+  it should "slice over multiple dimensions" in Region.run { implicit region =>
     val tb = ns.arange(max = 9).reshape(3, 3)
     val b1 = tb(0 :> 2, :>)
     b1 isSameAs ns.arange(max = 6).reshape(2, 3) shouldBe true
   }
 
-  it should "slice over multiple dimensions with integer indexing" in {
+  it should "slice over multiple dimensions with integer indexing" in Region.run { implicit region =>
+    val ta: Tensor = ns.arange(max = 10)
+    val tb: Tensor = ns.reshape(ns.arange(max = 9), 3, 3)
+    val tc: Tensor = ns.reshape(ns.arange(max = 2 * 3 * 4), 2, 3, 4)
+
     val b2 = tb(1, 0 :> -1)
     b2 isSameAs ns.tensor(3, 4) shouldBe true
   }
 
-  it should "add" in {
+  it should "add" in Region.run { implicit region =>
     val x = ns.arange(max = 4)
     val y = ns.ones(4)
     val z = x + y
@@ -296,7 +316,7 @@ class TensorSpec extends FlatSpec with Matchers {
     z isSameAs ns.create(1, 2, 3, 4) shouldBe true
   }
 
-  it should "broadcast operations" in {
+  it should "broadcast operations" in Region.run { implicit region =>
     val x = ns.arange(max = 4)
     val xx = x.reshape(4, 1)
     val y = ns.ones(5)
@@ -334,7 +354,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "outer sum" in {
+  it should "outer sum" in Region.run { implicit region =>
     // outer sum
     val a = ns.tensor(0, 10, 20, 30).reshape(4, 1)
     val b = ns.tensor(1, 2, 3)
@@ -367,7 +387,7 @@ class TensorSpec extends FlatSpec with Matchers {
     assert(am.value(0) == 0)
   }
 
-  it should "expand nd" in {
+  it should "expand nd" in Region.run { implicit region =>
 
     def verify(shape1: List[Int],
                shape2: List[Int],
@@ -401,7 +421,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "index select" in {
+  it should "index select" in Region.run { implicit region =>
     val primes = ns.tensor(2, 3, 5, 7, 11, 13, 17, 19, 23)
     val idx = ns.tensor(3, 4, 1, 2, 2)
     val r = ns.indexSelect(primes, 0, idx)
@@ -429,7 +449,7 @@ class TensorSpec extends FlatSpec with Matchers {
   }
 
   /*
-  it should "list-of-location index" in {
+  it should "list-of-location index" in Region.run { implicit region =>
     val numSamples = 4
     val numClasses = 3
     val x = ns.arange(max = numSamples * numClasses).reshape(numSamples, numClasses)
@@ -441,7 +461,7 @@ class TensorSpec extends FlatSpec with Matchers {
   }
   */
 
-  it should "ix select" in {
+  it should "ix select" in Region.run { implicit region =>
     val primes = ns.tensor(2, 3, 5, 7, 11, 13, 17, 19, 23)
     val idx = List(3, 4, 1, 2, 2)
     val r = ns.ixSelect(primes, idx)
@@ -459,7 +479,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
   }
 
-  it should "simple nn" in {
+  it should "simple nn" in Region.run { implicit region =>
 
     val x = ns.arange(max = 12).reshape(List(4, 3))
     val w = ns.arange(max = 80).reshape(20, 3)

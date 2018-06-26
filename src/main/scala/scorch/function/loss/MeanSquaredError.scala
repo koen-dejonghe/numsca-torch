@@ -1,6 +1,6 @@
 package scorch.function.loss
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import scorch.{Function, Variable}
 import torch.cpu.TH
 
@@ -10,7 +10,7 @@ case class MeanSquaredError(x: Variable,
                             reduce: Boolean = true)
     extends Function {
 
-  override def forward(): Variable = {
+  override def forward()(implicit region: Region): Variable = {
 
     /*
     THNN_FloatMSECriterion_updateOutput(state: SWIGTYPE_p_void,

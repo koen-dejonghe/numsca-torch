@@ -1,11 +1,11 @@
 package scorch.function
 
-import ns.Tensor
+import ns.{Region, Tensor}
 import scorch.Variable
 import scorch.Function
 import torch.cpu.TH
 
-case class LogSoftMax(input: Variable, dim: Option[Long] = None)
+case class LogSoftMax(input: Variable, dim: Option[Long] = None)(implicit region: Region)
     extends Function {
 
   // see torch.nn.functional.py
@@ -23,7 +23,7 @@ case class LogSoftMax(input: Variable, dim: Option[Long] = None)
                                     long dim)
    */
   val output: Tensor = ns.empty
-  override def forward(): Variable = {
+  override def forward()(implicit region: Region): Variable = {
     TH.THNN_FloatLogSoftMax_updateOutput(null, input, output, dimValue)
     Variable(output, Some(this))
   }
