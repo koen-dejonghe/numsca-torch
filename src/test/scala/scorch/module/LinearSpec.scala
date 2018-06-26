@@ -162,27 +162,6 @@ class LinearSpec extends FlatSpec with Matchers with LazyLogging {
       }
     }
 
-    def step(i: Int,
-             net: Module,
-             input: Variable,
-             target: Variable,
-             optimizer: Optimizer,
-             numSamples: Int) = Region.run { implicit r =>
-      net.zeroGrad()
-      val output = net(input)
-
-      val guessed = ns.argmax(output.data, axis = 1)
-      val accuracy = ns.sum(target.data == guessed) / numSamples
-
-      val loss = crossEntropy(output, target)
-      println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
-
-      guessed.array.getStorage.delete()
-      guessed.array.delete()
-
-      loss.backward()
-      optimizer.step()
-    }
   }
 
 }
