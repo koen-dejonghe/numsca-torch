@@ -29,9 +29,21 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def value(ix: List[Int]): Float = ns.getValue(this, ix)
   def value(ix: Int*): Float = ns.getValue(this, ix.toList)
 
+//  array.setFlag(1)
+//  array.setRefcount(0)
+
   override def finalize(): Unit = {
     MemoryManager.dec(sz)
+
+    // logger.debug("ref count: " + array.getRefcount)
+
+
+
+
+
     TH.THFloatTensor_free(array)
+//    TH.THFloatStorage_free(array.getStorage)
+//     array.delete()
   }
 
   def copy(): Tensor = ns.copy(this)
@@ -94,10 +106,8 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
 }
 
 object Tensor extends LazyLogging {
-
   def apply(data: Array[Float]): Tensor = ns.create(data)
   def apply(data: Number*): Tensor = Tensor(data.map(_.floatValue()).toArray)
 
   implicit def toRawTensor(t: Tensor): THFloatTensor = t.array
-
 }

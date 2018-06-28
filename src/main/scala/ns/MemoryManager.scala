@@ -41,5 +41,5 @@ object MemoryManager extends LazyLogging {
 
     }
   }
-  t.schedule(task, 5000L, 1000L)
+  t.schedule(task, 500L, 500L)
 }
