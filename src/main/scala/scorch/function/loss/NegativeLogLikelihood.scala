@@ -16,6 +16,7 @@ case class NegativeLogLikelihood(input: Variable,
 
   // cast target as long tensor
   val targetAsLongTensor: LongTensor = LongTensor(target)
+  println("casted!!!!!!!!!!!!!!") // todo fix this
 
   /*
   THNN_FloatClassNLLCriterion_updateOutput(
