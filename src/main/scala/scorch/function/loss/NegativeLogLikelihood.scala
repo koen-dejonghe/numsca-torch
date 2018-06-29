@@ -1,8 +1,10 @@
 package scorch.function.loss
 
-import ns.Tensor
+import ns.{LongTensor, Tensor}
 import scorch.{Function, Variable}
-import torch.cpu.{TH, THLongTensor}
+import torch.cpu.TH
+
+import scala.language.implicitConversions
 
 case class NegativeLogLikelihood(input: Variable,
                                  target: Variable,
@@ -12,7 +14,8 @@ case class NegativeLogLikelihood(input: Variable,
                                  reduce: Boolean = true)
     extends Function {
 
-  val targetAsLong: THLongTensor = ns.floatTensorToLongTensor(target)
+  // cast target as long tensor
+  val targetAsLongTensor: LongTensor = LongTensor(target)
 
   /*
   THNN_FloatClassNLLCriterion_updateOutput(
@@ -36,7 +39,7 @@ case class NegativeLogLikelihood(input: Variable,
     TH.THNN_FloatClassNLLCriterion_updateOutput(
       null,
       input,
-      targetAsLong,
+      targetAsLongTensor,
       output,
       sizeAverage,
       weights.map(_.array).orNull,
@@ -64,10 +67,11 @@ case class NegativeLogLikelihood(input: Variable,
    */
 
   override def backward(gradOutput: Variable): Unit = {
+
     TH.THNN_FloatClassNLLCriterion_updateGradInput(
       null,
       input,
-      targetAsLong,
+      targetAsLongTensor,
       gradOutput,
       input.grad,
       sizeAverage,
@@ -76,6 +80,8 @@ case class NegativeLogLikelihood(input: Variable,
       ignoreIndex,
       reduce
     )
+
     input.backward(input.grad)
   }
+
 }

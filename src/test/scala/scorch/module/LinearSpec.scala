@@ -113,7 +113,7 @@ class LinearSpec extends FlatSpec with Matchers {
 
   it should "multiple passes of nn" in {
 
-    val numSamples = 160
+    val numSamples = 1600
     val numFeatures = 250
     val numClasses = 10
 
@@ -121,35 +121,28 @@ class LinearSpec extends FlatSpec with Matchers {
     case class Net() extends Module {
       val fc1 = Linear(numFeatures, 100)
       val fc2 = Linear(100, numClasses)
-      val f = Linear(numFeatures, numClasses)
       override def forward(x: Variable): Variable =
-        x ~> f
-//         x ~> fc1 ~> relu ~> fc2
-//        x ~> f ~> relu
-        // Variable(ns.zeros(numSamples, numClasses))
+         x ~> fc1 ~> relu ~> fc2
     }
 
-//    val net = Net()
+    val net = Net()
 
-//    val input = Variable(ns.randn(numSamples, numFeatures))
-//    val target = Variable(ns.randint(0, numClasses, List(numSamples)))
-//
-//    val optimizer = SGD(net.parameters, 0.08)
+    val input = Variable(ns.randn(numSamples, numFeatures))
+    val target = Variable(ns.randint(0, numClasses, List(numSamples)))
 
-    for (i <- 1 to 10000000) {
-      ns.zeros(numSamples, numClasses)
+    val optimizer = SGD(net.parameters, 0.08)
 
-      Thread.sleep(1)
-//      net.zeroGrad()
-//      val output = net(input)
+    for (i <- 1 to 1000000000) {
+      net.zeroGrad()
+      val output = net(input)
 
-//      val guessed = ns.argmax(output.data, axis = 1)
-//      val accuracy = ns.sum(target.data == guessed) / numSamples
+      val guessed = ns.argmax(output.data, axis = 1)
+      val accuracy = ns.sum(target.data == guessed) / numSamples
 
-//      val loss = crossEntropy(output, target)
-//      loss.backward()
-      // println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
-//      optimizer.step()
+      val loss = crossEntropy(output, target)
+      loss.backward()
+      println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
+      optimizer.step()
     }
 
   }

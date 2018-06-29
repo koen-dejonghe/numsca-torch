@@ -8,6 +8,8 @@ import scala.language.{implicitConversions, postfixOps}
 class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
     extends LazyLogging {
 
+  val pointer: Long = Tensor.pointer(array)
+
   def dim: Int = array.getNDimension
   def shape: List[Int] = ns.shape(array)
   def stride: List[Int] = ns.stride(array)
@@ -16,8 +18,7 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def realSize: Int =
     shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
-  private val sz = size
-  MemoryManager.inc(sz)
+  MemoryManager.inc
 
   def desc: String = TH.THFloatTensor_desc(array).getStr
 
@@ -29,21 +30,10 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def value(ix: List[Int]): Float = ns.getValue(this, ix)
   def value(ix: Int*): Float = ns.getValue(this, ix.toList)
 
-//  array.setFlag(1)
-//  array.setRefcount(0)
-
   override def finalize(): Unit = {
-    MemoryManager.dec(sz)
-
-    // logger.debug("ref count: " + array.getRefcount)
-
-
-
-
-
-    TH.THFloatTensor_free(array)
-//    TH.THFloatStorage_free(array.getStorage)
-//     array.delete()
+    logger.debug(s"freeing float tensor $pointer")
+    THJNI.THFloatTensor_free(pointer, array)
+    MemoryManager.dec
   }
 
   def copy(): Tensor = ns.copy(this)
@@ -105,9 +95,18 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def unary_- : Tensor = ns.neg(this)
 }
 
-object Tensor extends LazyLogging {
-  def apply(data: Array[Float]): Tensor = ns.create(data)
-  def apply(data: Number*): Tensor = Tensor(data.map(_.floatValue()).toArray)
+object Tensor extends THFloatTensor with LazyLogging {
+  def pointer(t: THFloatTensor): Long = THFloatTensor.getCPtr(t)
 
-  implicit def toRawTensor(t: Tensor): THFloatTensor = t.array
+  def apply(data: Array[Float]): Tensor = ns.create(data)
+  def apply(data: Number*): Tensor = Tensor.apply(data.map(_.floatValue()).toArray)
+
+  def apply(bt: ByteTensor): Tensor = {
+    new Tensor(ns.byteTensorToFloatTensor(bt))
+  }
+
+  def apply(lt: LongTensor): Tensor = {
+    new Tensor(ns.longTensorToFloatTensor(lt))
+  }
 }
+

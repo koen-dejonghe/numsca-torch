@@ -10,6 +10,7 @@ import scala.language.implicitConversions
   */
 package object ns extends LazyLogging {
 
+
   type Shape = List[Int]
 
   /* === numsca range == */
@@ -452,15 +453,10 @@ package object ns extends LazyLogging {
     a.cast()
   }
 
+  /* === float <---> long ===================================================== */
   def floatTensorToLongTensor(ft: THFloatTensor): THLongTensor = {
     val lt = longStorageLike(ft)
     TH.THLongTensor_copyFloat(lt, ft)
-    lt
-  }
-
-  def byteTensorToFloatTensor(bt: THByteTensor): THFloatTensor = {
-    val lt = floatStorageLike(bt)
-    TH.THFloatTensor_copyByte(lt, bt)
     lt
   }
 
@@ -473,10 +469,27 @@ package object ns extends LazyLogging {
   def longStorageLike(t: THFloatTensor): THLongTensor =
     TH.THLongTensor_newWithSize(longStorage(shape(t)), longStorage(stride(t)))
 
-  def floatStorageLike(t: THByteTensor): THFloatTensor =
-    TH.THFloatTensor_newWithSize(longStorage(shape(t)), longStorage(stride(t)))
   def floatStorageLike(t: THLongTensor): THFloatTensor =
     TH.THFloatTensor_newWithSize(longStorage(shape(t)), longStorage(stride(t)))
+
+  /* === float <---> byte ===================================================== */
+  def floatTensorToByteTensor(ft: THFloatTensor): THByteTensor = {
+    val lt = byteStorageLike(ft)
+    TH.THByteTensor_copyFloat(lt, ft)
+    lt
+  }
+
+  def byteTensorToFloatTensor(bt: THByteTensor): THFloatTensor = {
+    val lt = floatStorageLike(bt)
+    TH.THFloatTensor_copyByte(lt, bt)
+    lt
+  }
+
+  def floatStorageLike(t: THByteTensor): THFloatTensor =
+    TH.THFloatTensor_newWithSize(longStorage(shape(t)), longStorage(stride(t)))
+
+  def byteStorageLike(t: THFloatTensor): THByteTensor =
+    TH.THByteTensor_newWithSize(longStorage(shape(t)), longStorage(stride(t)))
 
   def shape(array: THFloatTensor): List[Int] =
     shapify(array.getSize, array.getNDimension)
@@ -537,4 +550,13 @@ package object ns extends LazyLogging {
     new Tensor(r, true)
   }
 
+  /* down casting is ok */
+  implicit def longTensor2THLT(lt: LongTensor): THLongTensor = lt.array
+  implicit def floatTensorToTHFT(t: Tensor): THFloatTensor = t.array
+  implicit def byteTensorToTHBT(t: ByteTensor): THByteTensor = t.array
+
+  // todo too dangerous to leave lying around
+  // we could end up with conversions of conversions, which upon free will cause SIGSEV
+  // implicit def thlt2LongTensor(thlt: THLongTensor): LongTensor = new LongTensor(thlt)
+  // implicit def thft2floatTensor(thft: THFloatTensor): Tensor = new Tensor(thft)
 }

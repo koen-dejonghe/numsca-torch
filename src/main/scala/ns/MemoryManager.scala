@@ -6,7 +6,34 @@ import java.util.concurrent.atomic.AtomicLong
 import com.typesafe.scalalogging.LazyLogging
 
 object MemoryManager extends LazyLogging {
+  private val tensorCount = new AtomicLong(0)
 
+  def dec: Long = tensorCount.decrementAndGet()
+  def inc: Long = tensorCount.incrementAndGet()
+
+  val t = new java.util.Timer()
+  val task: TimerTask = new java.util.TimerTask {
+    def run(): Unit = {
+      logger.debug(s"running: $tensorCount tensors in memory")
+      System.gc()
+    }
+  }
+  t.schedule(task, 500L, 1000L)
+
+  def shutdown(): Unit = t.cancel()
+}
+
+/*
+object THFT extends THFloatTensor with LazyLogging {
+  def pointer(t: THFloatTensor): Long = THFloatTensor.getCPtr(t)
+  def free(p: Long, t: THFloatTensor): Unit = {
+    THJNI.THFloatTensor_free(p, t)
+  }
+}
+*/
+
+/*
+object MemoryManager extends LazyLogging {
   // val Threshold: Long = 2L * 1024L * 1024L * 1024L // 2 GB
   val Threshold: Long = 2L * 1024L * 1024L
   val FloatSize = 4
@@ -35,7 +62,7 @@ object MemoryManager extends LazyLogging {
 
       val level = hiMemMark.longValue()
       if (level > Threshold) {
-        logger.debug(s"invoking gc ($level/$Threshold)")
+        // logger.debug(s"invoking gc ($level/$Threshold)")
         System.gc()
       }
 
@@ -43,3 +70,4 @@ object MemoryManager extends LazyLogging {
   }
   t.schedule(task, 500L, 500L)
 }
+ */

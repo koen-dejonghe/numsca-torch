@@ -36,10 +36,6 @@ case class Variable(data: Tensor,
     backward(Variable(ns.ones(data.shape)))
   }
 
-//  def backward(): Unit = {
-//    backward(this.grad)
-//  }
-
   def backward(gradOutput: Variable): Unit = {
     // grad.data += gradOutput.data // todo: taken care of now by the producing function. Verify.
     for (gf <- gradFn) gf.backward(gradOutput)
