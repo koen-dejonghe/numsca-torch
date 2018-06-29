@@ -1,6 +1,6 @@
 package scorch
 
-import ns.Tensor
+import ns.{LongTensor, Tensor}
 import scorch.function._
 import scorch.function.loss._
 
@@ -26,7 +26,7 @@ object Function {
     MeanSquaredError(x, y, sizeAverage, reduce).forward()
 
   def nll(x: Variable,
-          y: Variable,
+          y: LongTensor,
           weights: Option[Tensor] = None,
           sizeAverage: Boolean = true,
           ignoreIndex: Int = -100,
@@ -35,7 +35,7 @@ object Function {
       .forward()
 
   def crossEntropy(x: Variable,
-                   y: Variable,
+                   y: LongTensor,
                    weights: Option[Tensor] = None,
                    sizeAverage: Boolean = true,
                    ignoreIndex: Int = -100,

@@ -1,6 +1,6 @@
 package scorch.module
 
-import ns.Tensor
+import ns.{LongTensor, Tensor}
 import org.scalatest.{FlatSpec, Matchers}
 import scorch.{Module, Variable}
 import scorch.Function._
@@ -103,7 +103,7 @@ class LinearSpec extends FlatSpec with Matchers {
     val net = Net()
 
     val input = Variable(ns.randn(16, 25))
-    val target = Variable(ns.randint(0, 10, List(16)))
+    val target = LongTensor(ns.randint(0, 10, List(16)))
 
     val output = net(input)
     val loss = crossEntropy(output, target)
@@ -128,18 +128,19 @@ class LinearSpec extends FlatSpec with Matchers {
     val net = Net()
 
     val input = Variable(ns.randn(numSamples, numFeatures))
-    val target = Variable(ns.randint(0, numClasses, List(numSamples)))
+    val target = ns.randint(0, numClasses, List(numSamples))
+    val targetAsLong = LongTensor(target)
 
-    val optimizer = SGD(net.parameters, 0.08)
+    val optimizer = SGD(net.parameters, lr = 0.08)
 
     for (i <- 1 to 1000000000) {
       net.zeroGrad()
       val output = net(input)
 
-      val guessed = ns.argmax(output.data, axis = 1)
-      val accuracy = ns.sum(target.data == guessed) / numSamples
+      val guessed = ns.argmax(output, axis = 1)
+      val accuracy = ns.sum(guessed == target) / numSamples
 
-      val loss = crossEntropy(output, target)
+      val loss = crossEntropy(output, targetAsLong)
       loss.backward()
       println(s"$i: loss: ${loss.value(0)} accuracy: $accuracy")
       optimizer.step()

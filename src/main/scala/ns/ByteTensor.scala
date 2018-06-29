@@ -4,7 +4,7 @@ import com.typesafe.scalalogging.LazyLogging
 import torch.cpu.{THByteTensor, THJNI}
 
 class ByteTensor(val array: THByteTensor) extends LazyLogging {
-  var pointer: Long = ByteTensor.pointer(array)
+  val pointer: Long = ByteTensor.pointer(array)
 
   override def finalize(): Unit = {
     logger.debug(s"freeing byte tensor $pointer")

@@ -7,7 +7,7 @@ import torch.cpu.TH
 import scala.language.implicitConversions
 
 case class NegativeLogLikelihood(input: Variable,
-                                 target: Variable,
+                                 target: LongTensor,
                                  weights: Option[Tensor] = None,
                                  sizeAverage: Boolean = true,
                                  ignoreIndex: Int = -100,
@@ -15,8 +15,8 @@ case class NegativeLogLikelihood(input: Variable,
     extends Function {
 
   // cast target as long tensor
-  val targetAsLongTensor: LongTensor = LongTensor(target)
-  println("casted!!!!!!!!!!!!!!") // todo fix this
+  // val targetAsLongTensor: LongTensor = LongTensor(target)
+  // println("casted!!!!!!!!!!!!!!") // todo fix this
 
   /*
   THNN_FloatClassNLLCriterion_updateOutput(
@@ -40,7 +40,7 @@ case class NegativeLogLikelihood(input: Variable,
     TH.THNN_FloatClassNLLCriterion_updateOutput(
       null,
       input,
-      targetAsLongTensor,
+      target,
       output,
       sizeAverage,
       weights.map(_.array).orNull,
@@ -72,7 +72,7 @@ case class NegativeLogLikelihood(input: Variable,
     TH.THNN_FloatClassNLLCriterion_updateGradInput(
       null,
       input,
-      targetAsLongTensor,
+      target,
       gradOutput,
       input.grad,
       sizeAverage,
