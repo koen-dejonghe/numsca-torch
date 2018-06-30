@@ -14,7 +14,7 @@ object MemoryManager extends LazyLogging {
   val t = new java.util.Timer()
   val task: TimerTask = new java.util.TimerTask {
     def run(): Unit = {
-      logger.debug(s"running: $tensorCount tensors in memory")
+//      logger.debug(s"running: $tensorCount tensors in memory")
       System.gc()
     }
   }

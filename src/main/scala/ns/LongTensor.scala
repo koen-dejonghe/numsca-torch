@@ -6,7 +6,7 @@ import torch.cpu.{THJNI, THLongTensor}
 class LongTensor(val array: THLongTensor) extends LazyLogging {
   val pointer: Long = LongTensor.pointer(array)
   override def finalize(): Unit = {
-    logger.debug(s"freeing long tensor $pointer")
+//    logger.debug(s"freeing long tensor $pointer")
     THJNI.THLongTensor_free(pointer, array)
   }
 }

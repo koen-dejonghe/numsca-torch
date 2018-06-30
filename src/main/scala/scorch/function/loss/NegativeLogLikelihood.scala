@@ -14,10 +14,6 @@ case class NegativeLogLikelihood(input: Variable,
                                  reduce: Boolean = true)
     extends Function {
 
-  // cast target as long tensor
-  // val targetAsLongTensor: LongTensor = LongTensor(target)
-  // println("casted!!!!!!!!!!!!!!") // todo fix this
-
   /*
   THNN_FloatClassNLLCriterion_updateOutput(
     SWIGTYPE_p_void state,

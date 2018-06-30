@@ -14,6 +14,7 @@ object Variable {
   implicit def moduleApply[T <: Module](m: T): (Variable) => Variable =
     m.forward
 
+  // down casting is ok
   implicit def toRawTensor(v: Variable): THFloatTensor = v.array
   implicit def toTensor(v: Variable): Tensor = v.data
 }

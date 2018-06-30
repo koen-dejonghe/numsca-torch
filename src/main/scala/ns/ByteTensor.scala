@@ -7,7 +7,7 @@ class ByteTensor(val array: THByteTensor) extends LazyLogging {
   val pointer: Long = ByteTensor.pointer(array)
 
   override def finalize(): Unit = {
-    logger.debug(s"freeing byte tensor $pointer")
+//    logger.debug(s"freeing byte tensor $pointer")
     THJNI.THByteTensor_free(pointer, array)
   }
 }

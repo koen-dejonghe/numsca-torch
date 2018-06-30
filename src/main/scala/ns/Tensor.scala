@@ -31,7 +31,7 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def value(ix: Int*): Float = ns.getValue(this, ix.toList)
 
   override def finalize(): Unit = {
-    logger.debug(s"freeing float tensor $pointer")
+//    logger.debug(s"freeing float tensor $pointer")
     THJNI.THFloatTensor_free(pointer, array)
     MemoryManager.dec
   }
