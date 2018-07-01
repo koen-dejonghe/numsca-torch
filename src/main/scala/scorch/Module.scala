@@ -1,6 +1,7 @@
 package scorch
 
 import com.typesafe.scalalogging.LazyLogging
+import scorch.module.Parallel
 
 abstract class BaseModule(localParameters: Seq[Variable] = Nil) {
 
@@ -49,4 +50,10 @@ abstract class Module(localParameters: Seq[Variable] = Nil)
     with LazyLogging {
   def forward(x: Variable): Variable
   def apply(x: Variable): Variable = forward(x)
+
+  def par(parallelism: Int = Runtime.getRuntime.availableProcessors / 2)
+    : Parallel = {
+    logger.info(s"parallelizing factor = $parallelism")
+    Parallel(this, parallelism)
+  }
 }

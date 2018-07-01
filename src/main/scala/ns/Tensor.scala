@@ -8,7 +8,7 @@ import scala.language.{implicitConversions, postfixOps}
 class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
     extends LazyLogging {
 
-  val pointer: Long = Tensor.pointer(array)
+  var pointer: Long = Tensor.pointer(array)
 
   def dim: Int = array.getNDimension
   def shape: List[Int] = ns.shape(array)
@@ -33,6 +33,7 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   override def finalize(): Unit = {
 //    logger.debug(s"freeing float tensor $pointer")
     THJNI.THFloatTensor_free(pointer, array)
+    pointer = 0
     MemoryManager.dec
   }
 

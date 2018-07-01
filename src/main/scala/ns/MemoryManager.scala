@@ -18,7 +18,7 @@ object MemoryManager extends LazyLogging {
       System.gc()
     }
   }
-  t.schedule(task, 500L, 1000L)
+  t.schedule(task, 250, 250)
 
   def shutdown(): Unit = t.cancel()
 }

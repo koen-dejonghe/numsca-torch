@@ -10,7 +10,6 @@ import scala.language.implicitConversions
   */
 package object ns extends LazyLogging {
 
-
   type Shape = List[Int]
 
   /* === numsca range == */
@@ -203,9 +202,9 @@ package object ns extends LazyLogging {
   }
 
   def narrow(a: Tensor, ranges: NumscaRangeSeq): Tensor = {
-    val r = ranges.rs.zipWithIndex.foldLeft(a.array) {
+    val r: THFloatTensor = ranges.rs.zipWithIndex.foldLeft(a.array) {
       case (t, (i, d)) =>
-        val to = i.t match {
+        val to: Int = i.t match {
           case None =>
             TH.THFloatTensor_size(t, d).toInt
           case Some(n) if n < 0 =>
@@ -217,32 +216,30 @@ package object ns extends LazyLogging {
         val size = to - i.f
 
         val nr = TH.THFloatTensor_newNarrow(t, d, i.f, size)
-        TH.THFloatTensor_free(t) // todo ???????
         nr
-      // todo probably need to free 't' before returning
     }
 
     val s = TH.THFloatTensor_new()
     TH.THFloatTensor_squeeze(s, r)
+    TH.THFloatTensor_free(r)
     new Tensor(s)
   }
 
-  def assign(a: Tensor, f: Number): Tensor = {
+  def assign(a: Tensor, f: Number): Unit = {
     TH.THFloatTensor_fill(a, f.floatValue())
-    a
   }
 
   def assign(a: Tensor, src: Tensor): Unit = {
-      if (a.size == src.size) {
-        logger.debug("not broadcasting")
-        TH.THFloatTensor_copy(a, src)
-      } else { // broadcast
-        logger.debug("broadcasting")
-        val ls = longStorage(a.shape)
-        val ex = TH.THFloatTensor_newExpand(src, ls)
-        TH.THFloatTensor_copy(a, ex)
-        TH.THFloatTensor_free(ex) // todo ???????????????
-      }
+    if (a.size == src.size) {
+      logger.debug("not broadcasting")
+      TH.THFloatTensor_copy(a, src)
+    } else { // broadcast
+      logger.debug("broadcasting")
+      val ls = longStorage(a.shape)
+      val ex = TH.THFloatTensor_newExpand(src, ls)
+      TH.THFloatTensor_copy(a, ex)
+      TH.THFloatTensor_free(ex) // todo ???????????????
+    }
   }
 
   def squeeze(a: Tensor): Tensor = {
@@ -384,6 +381,22 @@ package object ns extends LazyLogging {
 
       resized
     }
+
+  def concatenate(t1: Tensor, t2: Tensor, dim: Int): Tensor = {
+
+//    val newDim = t1.shape(dim) + t2.shape(dim)
+//    val newShape = t1.shape.patch(dim, Seq(newDim), 1)
+//    val storage = longStorage(newShape)
+//
+//    val r = TH.THFloatTensor_newWithSize(storage, null)
+
+    val r = ns.empty
+    TH.THFloatTensor_cat(r, t1, t2, dim)
+    r
+  }
+
+  def concatenate(ts: Seq[Tensor], dim: Int): Tensor =
+    ts.tail.foldLeft(ts.head) { case (acc, t) => concatenate(acc, t, dim) }
 
   def indexSelect(a: Tensor, dim: Int, ix: Tensor): Tensor = {
     // public static void THFloatTensor_indexSelect(THFloatTensor tensor, THFloatTensor src, int dim, THLongTensor index)

@@ -1,6 +1,7 @@
 package ns
 
 import org.scalatest.{FlatSpec, Matchers}
+import scorch.Variable
 import torch.cpu.{SWIGTYPE_p_void, TH}
 
 import scala.language.postfixOps
@@ -56,7 +57,7 @@ class TensorSpec extends FlatSpec with Matchers {
     t3.desc shouldBe "torch.xTensor of size 100x100"
     t3.data.sum shouldBe 100 * 100
   }
-  */
+   */
 
   it should "arange" in {
     val t = ns.arange(max = 10.0)
@@ -312,19 +313,23 @@ class TensorSpec extends FlatSpec with Matchers {
 
     (xx + y).shape shouldBe List(4, 5)
 
-    val s1 = ns.tensor(
-      1, 1, 1, 1, 1, //
-      2, 2, 2, 2, 2, //
-      3, 3, 3, 3, 3, //
-      4, 4, 4, 4, 4 //
-    ).reshape(4, 5)
+    val s1 = ns
+      .tensor(
+        1, 1, 1, 1, 1, //
+        2, 2, 2, 2, 2, //
+        3, 3, 3, 3, 3, //
+        4, 4, 4, 4, 4 //
+      )
+      .reshape(4, 5)
     (xx + y) isSameAs s1 shouldBe true
 
-    val s2 = ns.tensor(
-      1, 2, 3, 4, //
-      1, 2, 3, 4, //
-      1, 2, 3, 4 //
-    ).reshape(3, 4)
+    val s2 = ns
+      .tensor(
+        1, 2, 3, 4, //
+        1, 2, 3, 4, //
+        1, 2, 3, 4 //
+      )
+      .reshape(3, 4)
     (x + z) isSameAs s2 shouldBe true
 
     // also test same shape
@@ -338,24 +343,28 @@ class TensorSpec extends FlatSpec with Matchers {
     // outer sum
     val a = ns.tensor(0, 10, 20, 30).reshape(4, 1)
     val b = ns.tensor(1, 2, 3)
-    val c = ns.tensor(
-      1, 2, 3, //
-      11, 12, 13, //
-      21, 22, 23, //
-      31, 32, 33 //
-    ).reshape(4, 3)
+    val c = ns
+      .tensor(
+        1, 2, 3, //
+        11, 12, 13, //
+        21, 22, 23, //
+        31, 32, 33 //
+      )
+      .reshape(4, 3)
 
     println(c)
 
     (a + b) isSameAs c shouldBe true
 
     val observation = ns.tensor(111, 188)
-    val codes = ns.tensor(
-      102, 203, //
-      132, 193, //
-      45, 155, //
-      57, 173 //
-    ).reshape(4, 2)
+    val codes = ns
+      .tensor(
+        102, 203, //
+        132, 193, //
+        45, 155, //
+        57, 173 //
+      )
+      .reshape(4, 2)
     val diff = codes - observation
 
     println(diff)
@@ -424,7 +433,7 @@ class TensorSpec extends FlatSpec with Matchers {
     val y = NDArray(1, 0, 3, 2)
     val s = ns.indexSelect(x, 0, y)
     println(s)
-    */
+   */
 
   }
 
@@ -439,7 +448,7 @@ class TensorSpec extends FlatSpec with Matchers {
 
     println(z)
   }
-  */
+   */
 
   it should "ix select" in {
     val primes = ns.tensor(2, 3, 5, 7, 11, 13, 17, 19, 23)
@@ -470,13 +479,101 @@ class TensorSpec extends FlatSpec with Matchers {
     val y = ns.empty
     val buffer = ns.empty
 
-
     // public static void THNN_FloatLinear_updateOutput(SWIGTYPE_p_void state, THFloatTensor input, THFloatTensor output, THFloatTensor weight, THFloatTensor bias, THFloatTensor addBuffer) {
-    TH.THNN_FloatLinear_updateOutput(state, x.array, y.array, w.array, b.array, buffer.array)
+    TH.THNN_FloatLinear_updateOutput(state,
+                                     x.array,
+                                     y.array,
+                                     w.array,
+                                     b.array,
+                                     buffer.array)
 
     println(y)
     println
     println(buffer)
+  }
+
+  it should "concat" in {
+    val a = ns.randn(5, 20)
+    val b = ns.randn(5, 3)
+    val r = ns.concatenate(a, b, 1)
+    assert(r.shape == List(5, 23))
+
+    val c = ns.arange(max = 100).reshape(5, 20)
+    val d = ns.arange(max = 60).reshape(3, 20)
+    val s = ns.concatenate(c, d, 0)
+    assert(s.shape == List(8, 20))
+
+    val e = ns.randn(7, 20)
+    val t = ns.concatenate(Seq(c, d, e), 0)
+    assert(t.shape == List(15, 20))
+
+  }
+
+  it should "concat memory" in {
+    /* test for memory leaks */
+    for (i <- 1 to 10000) {
+      val a = ns.randn(250, 768)
+      val b = ns.randn(250, 768)
+      val c = ns.randn(250, 768)
+      val d = ns.randn(250, 768)
+
+      val r = ns.concatenate(Seq(a, b, c, d), 0)
+    }
+  }
+
+  it should "split concat" in {
+    val batchSize = 240
+    val chunkSize = 4 // 2.3 min
+
+    val fromTos = (0 until batchSize)
+      .sliding(chunkSize, chunkSize)
+      .map(s => (s.head, s.last + 1))
+      .toArray
+
+    for (i <- 1 to 10000) {
+      println(i)
+
+      val x = ns.randn(batchSize, 768)
+
+      val chunks = fromTos.map {
+        case (first, last) =>
+          x(first :> last)
+      }
+
+      val whole = ns.concatenate(chunks, 0)
+
+      assert(whole.isSameAs(x))
+    }
+  }
+
+
+  it should "split concat par" in {
+    val batchSize = 240
+    // val chunkSize = 60 // 53 sec
+    val chunkSize = 4 // 2.4 minutes
+
+    val fromTos = (0 until batchSize)
+      .sliding(chunkSize, chunkSize)
+      .map(s => (s.head, s.last + 1))
+      .toArray
+      .par
+
+    println(fromTos.size)
+
+    for (i <- 1 to 10000) {
+      println(i)
+
+      val x = ns.randn(batchSize, 768)
+
+      val chunks = fromTos.map {
+        case (first, last) =>
+          x(first :> last)
+      }
+
+      val whole = ns.concatenate(chunks.seq, 0)
+
+      assert(whole.isSameAs(x))
+    }
   }
 
 }
