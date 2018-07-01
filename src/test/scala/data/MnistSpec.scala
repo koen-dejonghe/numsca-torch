@@ -88,7 +88,7 @@ class MnistSpec extends FlatSpec with Matchers {
   it should "nn in par" in {
 
     val par = 8
-    val batchSize = 16 * par
+    val batchSize = 32 * par
     val numFeatures = 28 * 28
     val numClasses = 10
 
@@ -103,8 +103,10 @@ class MnistSpec extends FlatSpec with Matchers {
       val fc7 = Linear(100, 100)
       val fc8 = Linear(100, 100)
       val fc9 = Linear(100, numClasses)
+
       override def forward(x: Variable): Variable =
-        x ~> fc1 ~> relu ~>
+        x ~>
+          fc1 ~> relu ~>
           fc2 ~> relu ~>
           fc3 ~> relu ~>
           fc4 ~> relu ~>
