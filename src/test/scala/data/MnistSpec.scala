@@ -5,13 +5,13 @@ import org.scalatest.{FlatSpec, Matchers}
 import scorch.Function._
 import scorch.module.Linear
 import scorch.{Module, Variable}
-import scorch.optimizer.SGD
+import scorch.optimizer.{Adam, SGD}
 
 class MnistSpec extends FlatSpec with Matchers {
   "Mnist" should "simple feed nn" in {
 
     // val numSamples = 240 // for single cpu 8.6 sec
-    val batchSize = 240
+    val batchSize = 16
     val numFeatures = 28 * 28
     val numClasses = 10
 
@@ -29,6 +29,7 @@ class MnistSpec extends FlatSpec with Matchers {
     val devSet = new MnistDataLoader("dev", batchSize)
 
     val optimizer = SGD(net.parameters, lr = 0.03)
+//    val optimizer = Adam(net.parameters, lr = 0.0001)
 
     for (epoch <- 1 to 100) {
 
@@ -58,7 +59,7 @@ class MnistSpec extends FlatSpec with Matchers {
       }
       val stop = System.currentTimeMillis()
       println(
-        s"training: $epoch: time: ${stop - start} loss: ${avgLoss / count} accuracy: ${avgAccuracy / count}")
+        s"training: $epoch: loss: ${avgLoss / count} accuracy: ${avgAccuracy / count} time: ${stop - start}")
 
       evaluate(net, epoch)
     }

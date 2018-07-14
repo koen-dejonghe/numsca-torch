@@ -28,6 +28,13 @@ package object ns extends LazyLogging {
 
   case class NumscaRangeSeq(rs: Seq[NumscaRange])
 
+  implicit class NumscaDoubleOps(d: Double) {
+    def +(t: Tensor): Tensor = t + d
+    def -(t: Tensor): Tensor = -t + d
+    def *(t: Tensor): Tensor = t * d
+    def /(t: Tensor): Tensor = pow(t, -1) * d
+  }
+
   /* === random ================================================================================= */
   val rng: SWIGTYPE_p_THGenerator = TH.THGenerator_new()
 
@@ -192,7 +199,7 @@ package object ns extends LazyLogging {
       case (t, (i, d)) =>
         // todo probably need to free 't' before returning
         val nr = TH.THFloatTensor_newNarrow(t, d, i, 1)
-        TH.THFloatTensor_free(t) // todo ???????
+        // TH.THFloatTensor_free(t) // todo ???????
         nr
     }
 

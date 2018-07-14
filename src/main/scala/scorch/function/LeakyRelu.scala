@@ -34,6 +34,7 @@ case class LeakyRelu(x: Variable, negVal: Double = 0.0) extends Function {
                                            x.grad,
                                            negVal,
                                            false)
+
     x.backward(x.grad)
   }
 }
