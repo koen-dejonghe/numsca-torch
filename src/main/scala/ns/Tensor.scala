@@ -18,7 +18,7 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
   def realSize: Int =
     shape.zip(stride).map { case (d, s) => if (s == 0) 1 else d }.product
 
-  MemoryManager.inc
+//  MemoryManager.inc
 
   def desc: String = TH.THFloatTensor_desc(array).getStr
 
@@ -34,7 +34,7 @@ class Tensor private[ns] (val array: THFloatTensor, isBoolean: Boolean = false)
 //    logger.debug(s"freeing float tensor $pointer")
     THJNI.THFloatTensor_free(pointer, array)
     pointer = 0
-    MemoryManager.dec
+//    MemoryManager.dec
   }
 
   def copy(): Tensor = ns.copy(this)

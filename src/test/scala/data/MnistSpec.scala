@@ -3,7 +3,7 @@ package data
 import ns.LongTensor
 import org.scalatest.{FlatSpec, Matchers}
 import scorch.Function._
-import scorch.module.Linear
+import scorch.module.{BatchNorm, Linear}
 import scorch.{Module, Variable}
 import scorch.optimizer.{Adam, SGD}
 
@@ -19,8 +19,10 @@ class MnistSpec extends FlatSpec with Matchers {
     case class Net() extends Module {
       val fc1 = Linear(numFeatures, 100)
       val fc2 = Linear(100, numClasses)
+
+       val bn = BatchNorm(100)
       override def forward(x: Variable): Variable =
-        x ~> fc1 ~> relu ~> fc2
+        x ~> fc1 ~> relu ~> bn ~> fc2
     }
 
     val net = Net()
@@ -28,8 +30,9 @@ class MnistSpec extends FlatSpec with Matchers {
     val trainingSet = new MnistDataLoader("train", batchSize)
     val devSet = new MnistDataLoader("dev", batchSize)
 
-    val optimizer = SGD(net.parameters, lr = 0.03)
+//    val optimizer = SGD(net.parameters, lr = 0.03)
 //    val optimizer = Adam(net.parameters, lr = 0.0001)
+    val optimizer = Adam(net.parameters, lr = 0.0003)
 
     for (epoch <- 1 to 100) {
 
@@ -66,6 +69,8 @@ class MnistSpec extends FlatSpec with Matchers {
 
     def evaluate(model: Module, epoch: Int): Unit = {
 
+      model.eval()
+
       var avgLoss = 0.0
       var avgAccuracy = 0.0
       var count = 0
@@ -83,7 +88,10 @@ class MnistSpec extends FlatSpec with Matchers {
       }
       println(
         s"testing:  $epoch: loss: ${avgLoss / count} accuracy: ${avgAccuracy / count}")
+
+      model.train()
     }
+
   }
 
   it should "nn in par" in {
@@ -123,7 +131,8 @@ class MnistSpec extends FlatSpec with Matchers {
     val trainingSet = new MnistDataLoader("train", batchSize)
     val devSet = new MnistDataLoader("dev", batchSize)
 
-    val optimizer = SGD(net.parameters, lr = 0.01)
+//    val optimizer = SGD(net.parameters, lr = 0.01)
+    val optimizer = Adam(net.parameters, lr = 0.0001)
 
     for (epoch <- 1 to 100) {
 
