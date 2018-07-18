@@ -47,12 +47,16 @@ object Conv2d {
             scale: Double): Conv2d = {
     val w = Variable(ns.randn(nOutputPlane, nInputPlane, kW, kH))
     val b = Variable(ns.zeros(nOutputPlane))
-    val fInput = Variable(w.data.copy())
+    // val fInput = Variable(w.data.copy())
+    val fInput = Variable(ns.empty) // todo ?????
     Conv2d(w, b, fInput, kW, kH, dW, dH, padW, padH, scale)
   }
 
   def apply(nInputPlane: Int, nOutputPlane: Int, k: Int): Conv2d =
     apply(nInputPlane, nOutputPlane, k, k, 1, 1, 0, 0, 1.0)
+
+  def apply(nInputPlane: Int, nOutputPlane: Int, k: Int, stride: Int, pad: Int): Conv2d =
+    apply(nInputPlane, nOutputPlane, k, k, stride, stride, pad, pad, 1.0)
 
 }
 
