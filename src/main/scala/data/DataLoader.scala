@@ -1,8 +1,8 @@
 package data
 
-import ns.{LongTensor, Tensor}
+import ns.Tensor
 
-trait DataLoader extends scala.collection.immutable.Iterable[(Tensor, Tensor)] {
+trait DataLoader extends Iterable[(Tensor, Tensor)] {
   def numSamples: Int
   def numBatches: Int
 }

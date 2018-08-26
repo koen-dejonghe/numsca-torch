@@ -4,7 +4,7 @@ import java.io.{BufferedInputStream, FileInputStream}
 import java.util.zip.GZIPInputStream
 
 import com.typesafe.scalalogging.LazyLogging
-import ns.{LongTensor, Tensor}
+import ns.Tensor
 
 import scala.io.Source
 import scala.util.Random
